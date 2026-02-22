@@ -9,6 +9,7 @@ Modern web interface to view FLV camera streams from 3D printers over LAN, with 
 - **Unlimited printer cards** — add or remove printers dynamically at runtime
 - **Per-printer color coding** — 8 unique accent color schemes for quick visual identification
 - **Live FLV video playback** via `flv.js` with 16:9 aspect ratio and fullscreen support
+- **🔍 Video zoom** — zoom in on any camera feed up to 8× with mouse wheel, pinch-to-zoom (touch) or +/− buttons; pan by dragging while zoomed; double-click/tap to reset
 - **Recording** — capture live video as `.webm` directly from the browser
 - **Timelapse** — capture frames at a configurable interval (seconds/frame) and export as `.webm`
 - **Snapshot** — save a `.jpg` still from any camera with one click
@@ -57,6 +58,25 @@ Modern web interface to view FLV camera streams from 3D printers over LAN, with 
 6. Click **Connect** — the stream starts automatically
 
 To add more printers, repeat from step 4. Each printer gets its own card with independent controls.
+
+---
+
+## 🔍 Video Zoom
+
+Each camera feed supports interactive zoom without leaving the dashboard:
+
+| Interaction | Action |
+|-------------|--------|
+| **Scroll wheel** | Zoom in / out centred on cursor position |
+| **Pinch gesture** (touch) | Zoom in / out centred on pinch midpoint |
+| `+` / `−` **buttons** | Step zoom in / out by 0.5× |
+| **Click and drag** | Pan the view while zoomed in |
+| **`1×` button** | Reset zoom to fit (only visible when zoomed) |
+| **Double-click / double-tap** | Reset zoom to fit |
+
+- Zoom range: **1× – 8×**
+- A live zoom indicator (e.g. `2.5×`) appears on the video while zoomed
+- Each printer card has its own independent zoom state
 
 ---
 
@@ -147,10 +167,10 @@ pm2 startup
 
 | Browser | Status |
 |---------|--------|
-| Chrome (desktop/Android) | ✅ Full support including recording |
+| Chrome (desktop/Android) | ✅ Full support including recording and zoom |
 | Edge (desktop/Android) | ✅ Full support |
 | Firefox (desktop/Android) | ✅ Full support |
-| Safari / iPad | ⚠️ Streaming works; recording/timelapse not supported (FLV + MediaRecorder limitations) |
+| Safari / iPad | ⚠️ Streaming and zoom work; recording/timelapse not supported (FLV + MediaRecorder limitations) |
 | iPhone (Safari/Chrome) | ❌ FLV not supported |
 
 Tested with:
