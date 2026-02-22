@@ -3,6 +3,7 @@
 Modern web interface to view FLV camera streams from 3D printers over LAN, with multi-printer support, recording tools, and filament stock tracking.
 
 ## ✨ Features
+![Uploading image.png…]()
 
 ### 🎥 Multi-Printer Dashboard (`Remote-cam-multi.html`)
 - **Unlimited printer cards** — add or remove printers dynamically at runtime
