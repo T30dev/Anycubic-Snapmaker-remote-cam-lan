@@ -538,6 +538,92 @@
             border-radius: var(--radius-md);
             overflow: hidden;
             border: 1px solid var(--border);
+            cursor: zoom-in;
+        }
+
+        .video-wrapper.zoomed {
+            cursor: grab;
+        }
+
+        .video-wrapper.zoomed.dragging {
+            cursor: grabbing;
+        }
+
+        /* Zoom indicator */
+        .zoom-indicator {
+            position: absolute;
+            top: 10px; left: 12px;
+            background: rgba(0,0,0,0.65);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: var(--radius-sm);
+            color: rgba(255,255,255,0.9);
+            font-size: 0.68rem;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+            padding: 0.2rem 0.5rem;
+            backdrop-filter: blur(8px);
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .zoom-indicator.visible {
+            opacity: 1;
+        }
+
+        /* Zoom controls group (bottom-left) */
+        .zoom-controls {
+            position: absolute;
+            bottom: 12px; left: 12px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            z-index: 10;
+        }
+
+        .zoom-btn {
+            width: 36px; height: 36px;
+            background: rgba(0,0,0,0.65);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: var(--radius-sm);
+            color: rgba(255,255,255,0.85);
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all var(--t-normal);
+            backdrop-filter: blur(8px);
+            line-height: 1;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        .zoom-btn:hover {
+            background: var(--orange);
+            border-color: var(--orange);
+            color: white;
+            box-shadow: 0 2px 12px var(--orange-glow);
+        }
+
+        .zoom-btn:active {
+            transform: scale(0.92);
+        }
+
+        /* Reset button: only visible when zoomed */
+        .zoom-btn.zoom-reset-btn {
+            opacity: 0;
+            pointer-events: none;
+            font-size: 0.7rem;
+            letter-spacing: 0.5px;
+            width: auto;
+            padding: 0 0.6rem;
+        }
+
+        .zoom-btn.zoom-reset-btn.visible {
+            opacity: 1;
+            pointer-events: auto;
         }
 
         .video-wrapper::after {
@@ -1373,6 +1459,12 @@
                 <div class="printer-body">
                     <div class="video-wrapper" id="videoWrapper${printerNum}">
                         <video id="videoElement${printerNum}" class="printer-video" muted></video>
+                        <div class="zoom-indicator" id="zoomIndicator${printerNum}">1.0×</div>
+                        <div class="zoom-controls">
+                            <button class="zoom-btn" onclick="stepZoom(${printerNum}, -1)" title="Zoom out">−</button>
+                            <button class="zoom-btn zoom-reset-btn" id="zoomResetBtn${printerNum}" onclick="resetZoom(${printerNum})" title="Reset zoom">1×</button>
+                            <button class="zoom-btn" onclick="stepZoom(${printerNum}, +1)" title="Zoom in">+</button>
+                        </div>
                         <button class="fullscreen-overlay-btn" onclick="toggleFullscreen(${printerNum})" title="Fullscreen">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                                 <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
@@ -1457,6 +1549,7 @@
             const statusContainer = document.getElementById('statusIndicators');
             statusContainer.appendChild(createStatusIndicator(printerNum));
 
+            initZoom(printerNum);
             savePrinterList();
 
             const savedIP = localStorage.getItem(`printer${printerNum}_ip`);
@@ -1506,6 +1599,7 @@
                     printers[printerNum] = createPrinterState(printerNum);
                     document.getElementById('printersGrid').appendChild(createPrinterCard(printerNum));
                     document.getElementById('statusIndicators').appendChild(createStatusIndicator(printerNum));
+                    initZoom(printerNum);
                     loadPrinterConfig(printerNum);
                 });
             }
@@ -1782,6 +1876,170 @@
         function reconnectPrinter(printerNum) {
             addLog(printerNum, 'Manual reconnection', 'warn');
             createPlayer(printerNum);
+        }
+
+        // ========================================
+        // ZOOM
+        // ========================================
+        const zoomState = {};
+        const ZOOM_STEP = 0.5;
+        const ZOOM_MIN  = 1;
+        const ZOOM_MAX  = 8;
+
+        function initZoom(printerNum) {
+            const wrapper = document.getElementById(`videoWrapper${printerNum}`);
+            const video   = document.getElementById(`videoElement${printerNum}`);
+            if (!wrapper || !video) return;
+
+            zoomState[printerNum] = {
+                scale: 1, originX: 50, originY: 50,
+                dragStartX: 0, dragStartY: 0, isDragging: false,
+                pinchStartDist: 0, pinchStartScale: 1
+            };
+
+            // ── Mouse wheel ──────────────────────────
+            wrapper.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const z = zoomState[printerNum];
+                const rect = wrapper.getBoundingClientRect();
+                const mouseX = ((e.clientX - rect.left) / rect.width)  * 100;
+                const mouseY = ((e.clientY - rect.top)  / rect.height) * 100;
+                const delta = e.deltaY < 0 ? 0.15 : -0.15;
+                const newScale = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z.scale + delta * z.scale));
+                _applyNewScale(printerNum, newScale, mouseX, mouseY);
+            }, { passive: false });
+
+            // ── Mouse drag (pan) ─────────────────────
+            wrapper.addEventListener('mousedown', (e) => {
+                const z = zoomState[printerNum];
+                if (z.scale <= 1 || e.button !== 0) return;
+                e.preventDefault();
+                z.isDragging = true;
+                z.dragStartX = e.clientX;
+                z.dragStartY = e.clientY;
+                wrapper.classList.add('dragging');
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                const z = zoomState[printerNum];
+                if (!z || !z.isDragging) return;
+                const rect = wrapper.getBoundingClientRect();
+                const dx = (e.clientX - z.dragStartX) / rect.width  * 100 / z.scale;
+                const dy = (e.clientY - z.dragStartY) / rect.height * 100 / z.scale;
+                z.originX = Math.max(0, Math.min(100, z.originX - dx));
+                z.originY = Math.max(0, Math.min(100, z.originY - dy));
+                z.dragStartX = e.clientX;
+                z.dragStartY = e.clientY;
+                applyZoom(printerNum);
+            });
+
+            window.addEventListener('mouseup', () => {
+                const z = zoomState[printerNum];
+                if (!z) return;
+                z.isDragging = false;
+                wrapper.classList.remove('dragging');
+            });
+
+            // ── Touch: pinch-to-zoom + pan ───────────
+            wrapper.addEventListener('touchstart', (e) => {
+                const z = zoomState[printerNum];
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    z.pinchStartDist  = _pinchDist(e.touches);
+                    z.pinchStartScale = z.scale;
+                } else if (e.touches.length === 1 && z.scale > 1) {
+                    z.isDragging  = true;
+                    z.dragStartX  = e.touches[0].clientX;
+                    z.dragStartY  = e.touches[0].clientY;
+                }
+            }, { passive: false });
+
+            wrapper.addEventListener('touchmove', (e) => {
+                const z = zoomState[printerNum];
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    const dist     = _pinchDist(e.touches);
+                    const newScale = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z.pinchStartScale * (dist / z.pinchStartDist)));
+                    const rect     = wrapper.getBoundingClientRect();
+                    const cx = ((e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left) / rect.width  * 100;
+                    const cy = ((e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top)  / rect.height * 100;
+                    _applyNewScale(printerNum, newScale, cx, cy);
+                } else if (e.touches.length === 1 && z.isDragging) {
+                    e.preventDefault();
+                    const rect = wrapper.getBoundingClientRect();
+                    const dx = (e.touches[0].clientX - z.dragStartX) / rect.width  * 100 / z.scale;
+                    const dy = (e.touches[0].clientY - z.dragStartY) / rect.height * 100 / z.scale;
+                    z.originX = Math.max(0, Math.min(100, z.originX - dx));
+                    z.originY = Math.max(0, Math.min(100, z.originY - dy));
+                    z.dragStartX = e.touches[0].clientX;
+                    z.dragStartY = e.touches[0].clientY;
+                    applyZoom(printerNum);
+                }
+            }, { passive: false });
+
+            wrapper.addEventListener('touchend', () => {
+                const z = zoomState[printerNum];
+                if (z) z.isDragging = false;
+            });
+
+            // ── Double-click / double-tap → reset ────
+            wrapper.addEventListener('dblclick', () => resetZoom(printerNum));
+        }
+
+        function _pinchDist(touches) {
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
+            return Math.hypot(dx, dy);
+        }
+
+        function _applyNewScale(printerNum, newScale, anchorX, anchorY) {
+            const z = zoomState[printerNum];
+            if (newScale === ZOOM_MIN) {
+                z.originX = 50; z.originY = 50;
+            } else if (z.scale === ZOOM_MIN) {
+                z.originX = anchorX;
+                z.originY = anchorY;
+            } else {
+                z.originX += (anchorX - z.originX) * (1 - z.scale / newScale);
+                z.originY += (anchorY - z.originY) * (1 - z.scale / newScale);
+            }
+            z.scale = newScale;
+            applyZoom(printerNum);
+        }
+
+        // Step zoom from buttons (±)
+        function stepZoom(printerNum, direction) {
+            const z = zoomState[printerNum];
+            if (!z) return;
+            const newScale = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z.scale + direction * ZOOM_STEP));
+            _applyNewScale(printerNum, newScale, 50, 50);
+        }
+
+        function applyZoom(printerNum) {
+            const z         = zoomState[printerNum];
+            if (!z) return;
+            const video     = document.getElementById(`videoElement${printerNum}`);
+            const wrapper   = document.getElementById(`videoWrapper${printerNum}`);
+            const indicator = document.getElementById(`zoomIndicator${printerNum}`);
+            const resetBtn  = document.getElementById(`zoomResetBtn${printerNum}`);
+            if (!video) return;
+
+            video.style.transformOrigin = `${z.originX}% ${z.originY}%`;
+            video.style.transform = z.scale > 1 ? `scale(${z.scale})` : '';
+            wrapper.classList.toggle('zoomed', z.scale > 1);
+
+            if (indicator) {
+                indicator.textContent = `${z.scale.toFixed(1)}×`;
+                indicator.classList.toggle('visible', z.scale > 1);
+            }
+            if (resetBtn) resetBtn.classList.toggle('visible', z.scale > 1);
+        }
+
+        function resetZoom(printerNum) {
+            const z = zoomState[printerNum];
+            if (!z) return;
+            z.scale = ZOOM_MIN; z.originX = 50; z.originY = 50;
+            applyZoom(printerNum);
         }
 
         // ========================================
