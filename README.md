@@ -2,10 +2,14 @@
 
 Modern web interface to view FLV camera streams from 3D printers over LAN, with multi-printer support, recording tools, and filament stock tracking.
 
+> **Supported printers:** Anycubic Kobra S1 · Snapmaker U1 (and any printer that streams FLV over LAN)
+
 ## ✨ Features
+
 <img width="1424" height="928" alt="image" src="https://github.com/user-attachments/assets/76cbef77-e3ad-408b-9fde-86e1ad026180" />
 
 ### 🎥 Multi-Printer Dashboard (`Remote-cam-multi.html`)
+
 - **Unlimited printer cards** — add or remove printers dynamically at runtime
 - **Per-printer color coding** — 8 unique accent color schemes for quick visual identification
 - **Live FLV video playback** via `flv.js` with 16:9 aspect ratio and fullscreen support
@@ -19,17 +23,20 @@ Modern web interface to view FLV camera streams from 3D printers over LAN, with 
 - **Per-printer debug log** — real-time log with severity levels, toggleable per card
 
 ### 📡 Connection & Streaming
+
 - Custom configuration of protocol, IP, port/path per printer
 - Preset port options (`18088/flv`, `/flv`) plus free-form custom entry
 - Auto-reconnect on error (3 s delay)
 - Real-time speed (KB/s) and latency monitoring with automatic buffer cleanup when latency > 3 s
 
 ### 💾 Persistence
+
 - All printer configurations and filament data saved in `localStorage`
 - Layout preference persisted across sessions
 - Printer list restores automatically on page reload
 
 ### 📱 Responsive Design
+
 - Desktop, tablet and mobile friendly
 - Compact horizontal layout optimised for viewing multiple streams on smaller screens
 
@@ -46,6 +53,8 @@ Modern web interface to view FLV camera streams from 3D printers over LAN, with 
 
 ## 🚀 How to Use
 
+### 🟠 Anycubic Kobra S1
+
 1. Enable **LAN mode** on your 3D printer (Settings → Network → LAN Mode)
 2. Open Anycubic Slicer and activate the camera live view (Device → Camera)
 3. Open `Remote-cam-multi.html` in a browser
@@ -58,6 +67,114 @@ Modern web interface to view FLV camera streams from 3D printers over LAN, with 
 6. Click **Connect** — the stream starts automatically
 
 To add more printers, repeat from step 4. Each printer gets its own card with independent controls.
+
+---
+
+### 🟢 Snapmaker U1
+
+The Snapmaker U1 camera automatically stops streaming after a short period of inactivity. A lightweight Python keep-alive script must run alongside the dashboard to send a `camera.start_monitor` command periodically via the printer WebSocket API.
+
+#### 🔑 Get the API Token
+
+1. Open the Snapmaker U1 web panel: `http://PRINTER_IP`
+2. Go to **Settings → Authentication**
+3. Copy the **API Key** value
+
+> **Important:** treat the API token as sensitive data. Do not publish it.
+
+#### ⚙️ Requirements
+
+Python 3.8+
+
+```bash
+python3 --version
+```
+
+Install if needed:
+
+```bash
+sudo apt update && sudo apt install python3 python3-pip -y
+```
+
+Install the dependency:
+
+```bash
+python3 -m pip install websocket-client
+```
+
+#### 🛠️ Configuration
+
+Edit the script with your values:
+
+```python
+PRINTER_IP = "192.168.X.X"
+TOKEN      = "YOUR_API_TOKEN"
+INTERVAL   = 2
+```
+
+#### ▶️ Run manually
+
+```bash
+python3 keepalive_snapmaker.py
+```
+
+Expected output:
+
+```
+Snapmaker U1 Camera KeepAlive
+Printer: 192.168.X.X
+Interval: 2 seconds
+Starting...
+
+16:42:01 camera alive
+16:42:05 camera alive
+16:42:09 camera alive
+```
+
+#### 🔄 Run as a background service (systemd)
+
+```bash
+sudo nano /etc/systemd/system/snapmaker-camera.service
+```
+
+```ini
+[Unit]
+Description=Snapmaker Camera KeepAlive
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/snapmaker
+ExecStart=/usr/bin/python3 /opt/snapmaker/keepalive_snapmaker.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable snapmaker-camera
+sudo systemctl start snapmaker-camera
+sudo systemctl status snapmaker-camera
+```
+
+View logs:
+
+```bash
+journalctl -u snapmaker-camera -f
+```
+
+#### 📡 Connect the dashboard
+
+Once the keep-alive script is running:
+
+1. Open `Remote-cam-multi.html` in a browser
+2. Click **+ Add Printer**
+3. Enter your Snapmaker U1 IP and the appropriate stream port/path
+4. Click **Connect**
 
 ---
 
@@ -174,7 +291,9 @@ pm2 startup
 | iPhone (Safari/Chrome) | ❌ FLV not supported |
 
 Tested with:
+
 - ✅ Anycubic Kobra S1
+- ✅ Snapmaker U1
 - ⚠️ Should work with any printer that streams FLV over LAN
 
 ---
@@ -186,13 +305,14 @@ Tested with:
 - [`flv.js`](https://github.com/bilibili/flv.js) via CDN — FLV live stream playback
 - `MediaRecorder` API — in-browser video recording
 - `localStorage` — configuration and filament data persistence
+- `websocket-client` (Python) — Snapmaker U1 camera keep-alive
 
 ---
 
 ## ❗ Disclaimer
 
-> This project is an open-source tool and is **not affiliated with or endorsed by Anycubic** or any other manufacturer.
-> "Anycubic" and "Kobra S1" are trademarks of their respective owners.
+> This project is an open-source tool and is **not affiliated with or endorsed by Anycubic or Snapmaker** or any other manufacturer.
+> "Anycubic", "Kobra S1", "Snapmaker" and "U1" are trademarks of their respective owners.
 > This software is intended for personal and educational use only.
 
 ---
@@ -201,11 +321,10 @@ Tested with:
 
 This project is licensed under the **Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)**.
 
-You are free to use, copy, and modify the code for personal and non-commercial purposes.
-You may not sell, license, or monetize this software or its derivatives.
+You are free to use, copy, and modify the code for personal and non-commercial purposes. You may not sell, license, or monetize this software or its derivatives.
 
 [Read full license](https://creativecommons.org/licenses/by-nc/4.0/)
 
 ---
 
-Developed by Teo · [GitHub](https://github.com/T30dev/Anycubic-remote-cam-lan)
+Developed by Teo · [GitHub](https://github.com/T30dev/Anycubic-Snapmaker-remote-cam-lan)
