@@ -795,6 +795,8 @@
             overflow: hidden;
             border: 1px solid var(--border);
             cursor: zoom-in;
+            contain: layout style paint;
+            isolation: isolate;
         }
 
         .video-wrapper.zoomed {
@@ -935,11 +937,13 @@
             top: 0; left: 0;
             width: 100%; height: 100%;
             object-fit: contain;
-            image-rendering: -webkit-optimize-contrast;
-            image-rendering: crisp-edges;
-            will-change: transform;
+            image-rendering: auto;
+            image-rendering: high-quality;
+            will-change: transform, contents;
             -webkit-transform: translateZ(0);
             transform: translateZ(0);
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
         }
 
         /* Loading indicator */
@@ -1758,7 +1762,7 @@
                 </div>
                 <div class="printer-body">
                     <div class="video-wrapper" id="videoWrapper${printerNum}">
-                        <video id="videoElement${printerNum}" class="printer-video" muted></video>
+                        <video id="videoElement${printerNum}" class="printer-video" muted playsinline disablepictureinpicture></video>
                         <div class="zoom-indicator" id="zoomIndicator${printerNum}">1.0×</div>
                         <div class="zoom-controls">
                             <button class="zoom-btn" onclick="stepZoom(${printerNum}, -1)" title="Zoom out">−</button>
@@ -2130,13 +2134,14 @@
 
             printer.fallbackLoopRunning = true;
             let wasConnected = false;
+            const FALLBACK_INTERVAL = 33; // ~30 FPS target
 
             async function fallbackLoop() {
                 while (printer.fallbackLoopRunning) {
                     const t0 = performance.now();
                     try {
                         const controller = new AbortController();
-                        const timeout = setTimeout(() => controller.abort(), 4000);
+                        const timeout = setTimeout(() => controller.abort(), 3000);
                         const response = await fetch(printer.streamUrl + '?_=' + Date.now(), {
                             mode: 'cors',
                             signal: controller.signal
@@ -2164,7 +2169,7 @@
                         }
                     }
                     const elapsed = performance.now() - t0;
-                    const wait = Math.max(0, 100 - elapsed);
+                    const wait = Math.max(0, FALLBACK_INTERVAL - elapsed);
                     if (wait > 0) await new Promise(r => setTimeout(r, wait));
                 }
             }
@@ -2197,14 +2202,15 @@
             updateConnectionStatus(printerNum, 'Connecting…', false);
 
             printer.flvPlayer = flvjs.createPlayer(
-                { type: 'flv', url: printer.streamUrl, isLive: true, cors: true },
+                { type: 'flv', url: printer.streamUrl, isLive: true, cors: true, hasAudio: false, hasVideo: true },
                 {
                     enableStashBuffer: false,
                     stashInitialSize: 64,
-                    autoCleanupMaxBackwardDuration: 10,
-                    autoCleanupMinBackwardDuration: 5,
+                    autoCleanupMaxBackwardDuration: 3,
+                    autoCleanupMinBackwardDuration: 1,
                     enableWorker: false,
-                    lazyLoad: false
+                    lazyLoad: false,
+                    fixAudioTimestampGap: false
                 }
             );
             printer.flvPlayer.attachMediaElement(video);
@@ -2246,6 +2252,11 @@
                 loadingIndicator.style.display = 'none';
                 printer.isPlaying = true;
                 printer.reconnectAttempts = 0;
+                video.playbackRate = 1.0;
+                // Jump to live edge on first play
+                if (video.buffered.length > 0) {
+                    try { video.currentTime = video.buffered.end(video.buffered.length - 1) - 0.1; } catch(e) {}
+                }
             };
             const onWaiting = () => {
                 if (!printer.isPlaying) {
@@ -2362,24 +2373,33 @@
             sendSnapmakerKeepalive(printerNum);
             printer.keepaliveTimer = setInterval(() => sendSnapmakerKeepalive(printerNum), 2000);
 
-            // Image refresh loop
+            // High-FPS image refresh loop with double-buffering
             printer.snapmakerLoopRunning = true;
             let wasStreaming = false;
+            const TARGET_INTERVAL = 33; // ~30 FPS target
+
+            // Pre-create two Image objects for double-buffering
+            const bufferA = new Image();
+            const bufferB = new Image();
+            let useBufferA = true;
 
             async function refreshLoop() {
                 while (printer.snapmakerLoopRunning) {
                     const t0 = performance.now();
+                    const currentBuffer = useBufferA ? bufferA : bufferB;
+                    useBufferA = !useBufferA;
+
                     try {
                         await new Promise((resolve, reject) => {
-                            const tempImg = new Image();
                             const timeout = setTimeout(() => {
-                                tempImg.onload = tempImg.onerror = null;
+                                currentBuffer.onload = currentBuffer.onerror = null;
                                 reject(new Error('timeout'));
-                            }, 4000);
+                            }, 3000);
 
-                            tempImg.onload = () => {
+                            currentBuffer.onload = () => {
                                 clearTimeout(timeout);
-                                img.src = tempImg.src;
+                                // Swap displayed image instantly
+                                img.src = currentBuffer.src;
                                 if (!wasStreaming) {
                                     setStatus(printerNum, 'Streaming', 'success');
                                     updateConnectionStatus(printerNum, 'Streaming', true);
@@ -2388,7 +2408,7 @@
                                 }
                                 resolve();
                             };
-                            tempImg.onerror = () => {
+                            currentBuffer.onerror = () => {
                                 clearTimeout(timeout);
                                 if (wasStreaming) {
                                     setStatus(printerNum, 'Sin senal', 'error');
@@ -2398,7 +2418,7 @@
                                 loadingIndicator.style.display = 'none';
                                 resolve();
                             };
-                            tempImg.src = printer.streamUrl + '?_=' + Date.now();
+                            currentBuffer.src = printer.streamUrl + '?_=' + Date.now();
                         });
                     } catch(e) {
                         if (wasStreaming) {
@@ -2408,7 +2428,7 @@
                     }
 
                     const elapsed = performance.now() - t0;
-                    const wait = Math.max(0, 100 - elapsed);
+                    const wait = Math.max(0, TARGET_INTERVAL - elapsed);
                     if (wait > 0) await new Promise(r => setTimeout(r, wait));
                 }
             }
@@ -2734,6 +2754,7 @@
         // ========================================
         // LATENCY MONITORING
         // ========================================
+        // Aggressive latency monitoring — check every 500ms, seek at 1.5s
         setInterval(() => {
             Object.keys(printers).forEach(printerNum => {
                 const printer = printers[printerNum];
@@ -2743,29 +2764,32 @@
                 if (!video || !latencyStatus) return;
 
                 if (printer.flvPlayer && video.buffered.length > 0 && !video.paused) {
-                    const latency = video.buffered.end(0) - video.currentTime;
+                    const buffEnd = video.buffered.end(video.buffered.length - 1);
+                    const latency = buffEnd - video.currentTime;
                     const latencyText = `${latency.toFixed(2)}s`;
                     latencyStatus.textContent = latencyText;
 
-                    if (latency > 3) {
+                    if (latency > 1.5) {
                         latencyStatus.className = 'status-value error';
-                        if (printer.lastLatency !== latencyText) {
-                            try {
-                                if (video.seekable.length > 0) video.currentTime = video.seekable.end(0) - 0.5;
-                            } catch (e) {}
-                            printer.lastLatency = latencyText;
-                        }
-                    } else if (latency > 1.5) {
+                        // Seek to near-live edge for minimal delay
+                        try {
+                            video.currentTime = buffEnd - 0.1;
+                        } catch (e) {}
+                        printer.lastLatency = latencyText;
+                    } else if (latency > 0.8) {
                         latencyStatus.className = 'status-value warning';
+                        // Gently catch up by increasing playback rate
+                        video.playbackRate = 1.05;
                     } else {
                         latencyStatus.className = 'status-value success';
+                        video.playbackRate = 1.0;
                     }
                 } else {
                     latencyStatus.textContent = '—';
                     latencyStatus.className = 'status-value';
                 }
             });
-        }, 1000);
+        }, 500);
 
         // ========================================
         // FILAMENT TRACKER
