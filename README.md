@@ -46,7 +46,8 @@ Modern web interface to view FLV camera streams from 3D printers over LAN, with 
 
 | File | Description |
 |------|-------------|
-| `Remote-cam-multi.html` | **Multi-printer dashboard** — main file, all features included |
+| `Remote-cam-multi-v2.html` | **Multi-printer dashboard v2** — themes, native Snapmaker support, all features |
+| `Remote-cam-multi.html` | Previous version (kept for reference) |
 | `Remote-cam.html` | Legacy single-camera viewer (kept for reference) |
 
 ---
@@ -70,7 +71,18 @@ To add more printers, repeat from step 4. Each printer gets its own card with in
 
 ---
 
-### 🟢 Snapmaker U1
+
+### 📡 Native Snapmaker U1 Support (no Python script required)
+
+In v2, the dashboard includes a **built-in keep-alive** via WebSocket and a **JPEG image-refresh stream**, so no external Python script is needed for basic monitoring:
+
+1. Select port `/server/files/camera/monitor.jpg` in the printer config modal
+2. The dashboard automatically sends `camera.start_monitor` commands every 2 s via WebSocket
+3. The camera image refreshes at ~10 fps
+
+> **Note:** The Python `keepalive_snapmaker.py` script remains available for environments where the browser cannot establish a WebSocket connection directly.
+
+### 🟢 Snapmaker U1 (Legacy — Python script)
 
 The Snapmaker U1 camera automatically stops streaming after a short period of inactivity. A lightweight Python keep-alive script must run alongside the dashboard to send a `camera.start_monitor` command periodically via the printer WebSocket API.
 
@@ -194,6 +206,21 @@ Each camera feed supports interactive zoom without leaving the dashboard:
 - Zoom range: **1× – 8×**
 - A live zoom indicator (e.g. `2.5×`) appears on the video while zoomed
 - Each printer card has its own independent zoom state
+
+
+### 🎨 Visual Themes
+
+Switch between built-in themes using the palette button (🎨) in the header:
+
+| Theme | Description |
+|-------|-------------|
+| **Modern Dark** | Default dark theme with orange and blue accents |
+| **Cyberpunk** | Cyan neon tones with a monospace grid overlay |
+| **Midnight Purple** | Deep purple palette |
+| **Forest Green** | Dark green tones |
+| **Custom Image** | Upload your own background photo |
+
+Theme choice is saved in `localStorage` and restored on next load.
 
 ---
 
