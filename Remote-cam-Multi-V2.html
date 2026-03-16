@@ -1,0 +1,3120 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>3D Printer Dashboard - Multi View</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/flv.js/dist/flv.min.js"></script>
+
+    <style>
+        /* ============================================
+           DESIGN TOKENS
+        ============================================ */
+        :root {
+            /* Brand */
+            --orange:        #FF6B35;
+            --orange-dark:   #E05A28;
+            --orange-glow:   rgba(255, 107, 53, 0.25);
+            --blue:          #1E3A8A;
+            --blue-light:    #3B82F6;
+
+            /* Backgrounds */
+            --bg-base:       #080D17;
+            --bg-surface:    #0F172A;
+            --bg-elevated:   #162032;
+            --bg-card:       #1A2540;
+            --bg-input:      #0C1422;
+
+            /* Text */
+            --text-primary:  #F1F5F9;
+            --text-secondary:#94A3B8;
+            --text-muted:    #4B5A72;
+
+            /* Borders */
+            --border:        rgba(255,255,255,0.07);
+            --border-hover:  rgba(255,255,255,0.15);
+
+            /* Status */
+            --success:       #10B981;
+            --success-glow:  rgba(16, 185, 129, 0.2);
+            --warning:       #F59E0B;
+            --warning-glow:  rgba(245, 158, 11, 0.2);
+            --error:         #EF4444;
+            --error-glow:    rgba(239, 68, 68, 0.2);
+
+            /* Gradients */
+            --grad-brand:    linear-gradient(135deg, var(--orange), var(--blue-light));
+            --grad-button:   linear-gradient(135deg, var(--orange), var(--orange-dark));
+            --grad-card:     linear-gradient(160deg, rgba(255,107,53,0.06) 0%, rgba(30,58,138,0.06) 100%);
+
+            /* Shadows */
+            --shadow-sm:     0 1px 3px rgba(0,0,0,0.4);
+            --shadow-md:     0 4px 16px rgba(0,0,0,0.5);
+            --shadow-lg:     0 12px 40px rgba(0,0,0,0.6);
+            --shadow-glow:   0 0 0 1px var(--orange-glow), 0 8px 32px rgba(0,0,0,0.5);
+
+            /* Radius */
+            --radius-sm:     6px;
+            --radius-md:     10px;
+            --radius-lg:     16px;
+            --radius-xl:     20px;
+
+            /* Transitions */
+            --t-fast:        150ms ease;
+            --t-normal:      250ms ease;
+            --t-slow:        400ms ease;
+
+            /* Printer accent (overridden per card) */
+            --printer-accent:   var(--orange);
+            --printer-gradient: var(--grad-button);
+        }
+
+        /* Printer color schemes */
+        .printer-color-1 { --printer-accent: #FF6B35; --printer-gradient: linear-gradient(135deg,#FF6B35,#E55A2E); }
+        .printer-color-2 { --printer-accent: #8B5CF6; --printer-gradient: linear-gradient(135deg,#8B5CF6,#6366F1); }
+        .printer-color-3 { --printer-accent: #10B981; --printer-gradient: linear-gradient(135deg,#10B981,#059669); }
+        .printer-color-4 { --printer-accent: #F59E0B; --printer-gradient: linear-gradient(135deg,#F59E0B,#D97706); }
+        .printer-color-5 { --printer-accent: #EC4899; --printer-gradient: linear-gradient(135deg,#EC4899,#DB2777); }
+        .printer-color-6 { --printer-accent: #06B6D4; --printer-gradient: linear-gradient(135deg,#06B6D4,#0891B2); }
+        .printer-color-7 { --printer-accent: #84CC16; --printer-gradient: linear-gradient(135deg,#84CC16,#65A30D); }
+        .printer-color-8 { --printer-accent: #F43F5E; --printer-gradient: linear-gradient(135deg,#F43F5E,#E11D48); }
+
+        /* ============================================
+           THEME: CYBERPUNK (Snapmaker style)
+        ============================================ */
+        body.theme-cyberpunk {
+            --orange:        #00d4ff;
+            --orange-dark:   #009ac0;
+            --orange-glow:   rgba(0,212,255,0.25);
+            --blue:          #1a3a5c;
+            --blue-light:    #00d4ff;
+
+            --bg-base:       #080c10;
+            --bg-surface:    #0d1520;
+            --bg-elevated:   #0d1520;
+            --bg-card:       #0d1520;
+            --bg-input:      #080c10;
+
+            --text-primary:  #c8dff0;
+            --text-secondary:#4a6a8a;
+            --text-muted:    #2a4a6a;
+
+            --border:        rgba(26,58,92,0.6);
+            --border-hover:  rgba(0,212,255,0.4);
+
+            --success:       #00ff88;
+            --success-glow:  rgba(0,255,136,0.2);
+            --warning:       #ff6b35;
+            --warning-glow:  rgba(255,107,53,0.2);
+            --error:         #ff6b35;
+            --error-glow:    rgba(255,107,53,0.2);
+
+            --grad-brand:    linear-gradient(135deg, #00d4ff, #ff6b35);
+            --grad-button:   linear-gradient(135deg, #00d4ff, #009ac0);
+            --grad-card:     linear-gradient(160deg, rgba(0,212,255,0.06) 0%, rgba(26,58,92,0.06) 100%);
+
+            --shadow-glow:   0 0 0 1px rgba(0,212,255,0.15), 0 8px 32px rgba(0,0,0,0.5);
+
+            font-family: 'JetBrains Mono', 'Share Tech Mono', monospace;
+        }
+
+        body.theme-cyberpunk::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0,0,0,0.06) 2px,
+                rgba(0,0,0,0.06) 4px
+            );
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        body.theme-cyberpunk::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        body.theme-cyberpunk .printer-card {
+            border-color: rgba(0,212,255,0.15);
+        }
+
+        body.theme-cyberpunk .printer-card:hover {
+            border-color: rgba(0,212,255,0.4);
+            box-shadow: 0 0 20px rgba(0,212,255,0.15);
+        }
+
+        body.theme-cyberpunk header {
+            background: rgba(8,12,16,0.9);
+        }
+
+        body.theme-cyberpunk header::after {
+            background: linear-gradient(90deg, transparent, rgba(0,212,255,0.3), transparent);
+        }
+
+        body.theme-cyberpunk .logo-icon {
+            background: linear-gradient(135deg, #00d4ff, #ff6b35);
+        }
+
+        body.theme-cyberpunk .add-printer-btn {
+            background: linear-gradient(135deg, #00d4ff, #009ac0);
+            box-shadow: 0 2px 12px rgba(0,212,255,0.25);
+        }
+
+        body.theme-cyberpunk .instructions-card {
+            border-left-color: #00d4ff;
+        }
+
+        body.theme-cyberpunk .instructions-title {
+            color: #00d4ff;
+        }
+
+        body.theme-cyberpunk .btn-primary {
+            background: linear-gradient(135deg, #00d4ff, #009ac0);
+            box-shadow: 0 2px 10px rgba(0,212,255,0.25);
+        }
+
+        /* ============================================
+           THEME: MIDNIGHT PURPLE
+        ============================================ */
+        body.theme-midnight {
+            --orange:        #A78BFA;
+            --orange-dark:   #7C3AED;
+            --orange-glow:   rgba(167,139,250,0.25);
+            --blue:          #312E81;
+            --blue-light:    #818CF8;
+
+            --bg-base:       #0B0714;
+            --bg-surface:    #130F24;
+            --bg-elevated:   #1A1530;
+            --bg-card:       #1E1838;
+            --bg-input:      #0B0714;
+
+            --text-primary:  #E8E0F5;
+            --text-secondary:#8B7EB8;
+            --text-muted:    #4A3F6B;
+
+            --border:        rgba(167,139,250,0.1);
+            --border-hover:  rgba(167,139,250,0.3);
+
+            --success:       #34D399;
+            --warning:       #FBBF24;
+            --error:         #F87171;
+
+            --grad-brand:    linear-gradient(135deg, #A78BFA, #818CF8);
+            --grad-button:   linear-gradient(135deg, #A78BFA, #7C3AED);
+            --grad-card:     linear-gradient(160deg, rgba(167,139,250,0.06) 0%, rgba(49,46,129,0.06) 100%);
+            --shadow-glow:   0 0 0 1px rgba(167,139,250,0.15), 0 8px 32px rgba(0,0,0,0.5);
+        }
+
+        body.theme-midnight header::after {
+            background: linear-gradient(90deg, transparent, rgba(167,139,250,0.3), transparent);
+        }
+
+        body.theme-midnight .logo-icon {
+            background: linear-gradient(135deg, #A78BFA, #EC4899);
+        }
+
+        /* ============================================
+           THEME: FOREST GREEN
+        ============================================ */
+        body.theme-forest {
+            --orange:        #10B981;
+            --orange-dark:   #059669;
+            --orange-glow:   rgba(16,185,129,0.25);
+            --blue:          #064E3B;
+            --blue-light:    #34D399;
+
+            --bg-base:       #050F0A;
+            --bg-surface:    #0A1A12;
+            --bg-elevated:   #0F2418;
+            --bg-card:       #132D1E;
+            --bg-input:      #050F0A;
+
+            --text-primary:  #D1FAE5;
+            --text-secondary:#6EE7B7;
+            --text-muted:    #2D6A4F;
+
+            --border:        rgba(16,185,129,0.1);
+            --border-hover:  rgba(16,185,129,0.3);
+
+            --success:       #34D399;
+            --warning:       #FBBF24;
+            --error:         #F87171;
+
+            --grad-brand:    linear-gradient(135deg, #10B981, #34D399);
+            --grad-button:   linear-gradient(135deg, #10B981, #059669);
+            --grad-card:     linear-gradient(160deg, rgba(16,185,129,0.06) 0%, rgba(6,78,59,0.06) 100%);
+            --shadow-glow:   0 0 0 1px rgba(16,185,129,0.15), 0 8px 32px rgba(0,0,0,0.5);
+        }
+
+        body.theme-forest header::after {
+            background: linear-gradient(90deg, transparent, rgba(16,185,129,0.3), transparent);
+        }
+
+        body.theme-forest .logo-icon {
+            background: linear-gradient(135deg, #10B981, #065F46);
+        }
+
+        /* ============================================
+           THEME: CUSTOM (user background image)
+        ============================================ */
+        body.theme-custom {
+            --bg-base:       #0a0a0a;
+            --bg-surface:    rgba(15,15,15,0.85);
+            --bg-elevated:   rgba(25,25,25,0.9);
+            --bg-card:       rgba(30,30,30,0.85);
+            --bg-input:      rgba(10,10,10,0.9);
+            --border:        rgba(255,255,255,0.08);
+            --border-hover:  rgba(255,255,255,0.2);
+        }
+
+        body.theme-custom::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-image: var(--custom-bg-image);
+            filter: brightness(0.3) blur(2px);
+            z-index: -2;
+        }
+
+        body.theme-custom::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: -1;
+        }
+
+        body.theme-custom header {
+            background: rgba(10,10,10,0.8);
+            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(20px);
+        }
+
+        body.theme-custom .printer-card {
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+        }
+
+        /* ============================================
+           RESET & BASE
+        ============================================ */
+        *, *::before, *::after {
+            margin: 0; padding: 0;
+            box-sizing: border-box;
+        }
+
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+        * { scrollbar-width: thin; scrollbar-color: var(--text-muted) transparent; }
+
+        html { font-size: 16px; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            background-image:
+                radial-gradient(ellipse 80% 40% at 50% -10%, rgba(255,107,53,0.12) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 30% at 100% 100%, rgba(30,58,138,0.08) 0%, transparent 50%);
+        }
+
+        /* ============================================
+           SURFACE / GLASS CARD
+        ============================================ */
+        .glass {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        /* ============================================
+           HEADER
+        ============================================ */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 200;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.875rem 1.75rem;
+            background: rgba(8, 13, 23, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            transition: border-color var(--t-normal);
+        }
+
+        header::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--orange-glow), transparent);
+            opacity: 0.6;
+        }
+
+        header.rec-active {
+            border-bottom-color: var(--error);
+        }
+        header.rec-active::after {
+            background: linear-gradient(90deg, transparent, var(--error-glow), transparent);
+            opacity: 1;
+        }
+
+        /* Logo */
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.875rem;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 38px; height: 38px;
+            background: var(--grad-brand);
+            border-radius: var(--radius-md);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800;
+            color: white;
+            font-size: 0.95rem;
+            letter-spacing: -0.5px;
+            box-shadow: 0 4px 16px var(--orange-glow);
+            flex-shrink: 0;
+        }
+
+        .logo-text {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            background: var(--grad-brand);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Header controls */
+        .header-controls {
+            display: flex;
+            gap: 0.625rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* Status indicators */
+        .status-indicators {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.3rem 0.75rem;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: all var(--t-normal);
+        }
+
+        .status-dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: var(--error);
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .status-dot::after {
+            content: '';
+            position: absolute;
+            inset: -3px;
+            border-radius: 50%;
+            background: var(--error);
+            opacity: 0.3;
+            animation: pulse-ring 2s ease infinite;
+        }
+
+        .status-dot.connected {
+            background: var(--success);
+        }
+        .status-dot.connected::after {
+            background: var(--success);
+        }
+
+        @keyframes pulse-ring {
+            0%, 100% { transform: scale(1); opacity: 0.3; }
+            50%       { transform: scale(1.8); opacity: 0; }
+        }
+
+        /* Add Printer Button */
+        .add-printer-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--grad-button);
+            border: none;
+            border-radius: var(--radius-xl);
+            color: white;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all var(--t-normal);
+            box-shadow: 0 2px 12px var(--orange-glow);
+            letter-spacing: 0.2px;
+        }
+
+        .add-printer-btn:hover {
+            box-shadow: 0 4px 20px var(--orange-glow);
+            filter: brightness(1.1);
+        }
+
+        .add-printer-btn:active {
+            filter: brightness(0.95);
+            transform: scale(0.98);
+        }
+
+        /* Layout Toggle */
+        .layout-toggle-btn {
+            width: 36px; height: 36px;
+            border-radius: var(--radius-md);
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all var(--t-normal);
+        }
+
+        .layout-toggle-btn:hover {
+            background: var(--orange);
+            border-color: var(--orange);
+            color: white;
+            box-shadow: 0 2px 12px var(--orange-glow);
+        }
+
+        /* ============================================
+           INSTRUCTIONS CARD
+        ============================================ */
+        .instructions-card {
+            background: linear-gradient(135deg, rgba(255,107,53,0.05) 0%, rgba(30,58,138,0.05) 100%);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--orange);
+            border-radius: var(--radius-lg);
+            padding: 1rem 1.25rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .instructions-card::before {
+            content: '';
+            position: absolute;
+            top: -40px; right: -40px;
+            width: 120px; height: 120px;
+            background: var(--orange-glow);
+            border-radius: 50%;
+            filter: blur(40px);
+            pointer-events: none;
+        }
+
+        .instructions-title {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--orange);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 0.3rem;
+        }
+
+        .instructions-sub {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.875rem;
+        }
+
+        .setup-tab {
+            padding: 0.35rem 0.85rem;
+            font-size: 0.72rem;
+            font-weight: 600;
+            font-family: inherit;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: rgba(255,255,255,0.03);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .setup-tab:hover {
+            border-color: var(--border-hover);
+            color: var(--text-secondary);
+        }
+
+        .setup-tab.active {
+            background: var(--printer-gradient, var(--grad-button));
+            border-color: transparent;
+            color: #fff;
+        }
+
+        .steps-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+            gap: 0.5rem;
+        }
+
+        .step-card {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.6rem 0.75rem;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            cursor: default;
+            transition: all var(--t-normal);
+            min-height: 44px;
+            position: relative;
+        }
+
+        .step-card:hover {
+            background: rgba(255,255,255,0.06);
+            border-color: var(--border-hover);
+        }
+
+        /* Tooltip */
+        .step-card[data-tooltip]::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%) scale(0.95);
+            background: #1E2D45;
+            border: 1px solid var(--border-hover);
+            color: var(--text-primary);
+            font-size: 0.72rem;
+            font-weight: 400;
+            line-height: 1.45;
+            padding: 0.55rem 0.75rem;
+            border-radius: var(--radius-md);
+            white-space: pre-line;
+            width: max-content;
+            max-width: 220px;
+            box-shadow: var(--shadow-lg);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity var(--t-fast), transform var(--t-fast);
+            z-index: 999;
+        }
+
+        .step-card[data-tooltip]:hover::after {
+            opacity: 1;
+            transform: translateX(-50%) scale(1);
+        }
+
+        .step-card.complete {
+            border-color: rgba(16,185,129,0.4);
+            background: rgba(16,185,129,0.06);
+        }
+
+        .step-number {
+            width: 24px; height: 24px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700;
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+            transition: all var(--t-normal);
+        }
+
+        .step-card.complete .step-number {
+            background: var(--success);
+            border-color: var(--success);
+            color: white;
+            box-shadow: 0 0 12px var(--success-glow);
+        }
+
+        .step-title {
+            font-weight: 500;
+            font-size: 0.72rem;
+            color: var(--text-primary);
+            line-height: 1.3;
+        }
+
+        /* ============================================
+           PRINTERS GRID
+        ============================================ */
+        .printers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+            gap: 1.5rem;
+            transition: all var(--t-slow);
+        }
+
+        .printers-grid.layout-horizontal {
+            grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+        }
+
+        .printers-grid.layout-vertical {
+            grid-template-columns: 1fr;
+        }
+
+        /* ============================================
+           PRINTER CARD
+        ============================================ */
+        .printer-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            transition: box-shadow var(--t-normal), border-color var(--t-normal);
+            box-shadow: var(--shadow-md);
+            position: relative;
+        }
+
+        .printer-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg,
+                transparent 0%,
+                color-mix(in srgb, var(--printer-accent) 60%, transparent) 50%,
+                transparent 100%);
+        }
+
+        .printer-card:hover {
+            border-color: color-mix(in srgb, var(--printer-accent) 35%, transparent);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5),
+                        0 0 0 1px color-mix(in srgb, var(--printer-accent) 20%, transparent);
+        }
+
+        .printer-header {
+            padding: 0.875rem 1.25rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg,
+                color-mix(in srgb, var(--printer-accent) 10%, transparent) 0%,
+                transparent 60%);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .printer-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            min-width: 0;
+        }
+
+        .printer-badge {
+            flex-shrink: 0;
+            padding: 0.2rem 0.65rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.68rem;
+            font-weight: 800;
+            background: var(--printer-gradient);
+            color: white;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            box-shadow: 0 2px 8px color-mix(in srgb, var(--printer-accent) 40%, transparent);
+        }
+
+        .printer-name {
+            font-weight: 600;
+            font-size: 1rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            letter-spacing: -0.2px;
+        }
+
+        .printer-header-controls {
+            display: flex;
+            gap: 0.4rem;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .printer-body {
+            padding: 1rem;
+        }
+
+        /* ============================================
+           VIDEO WRAPPER
+        ============================================ */
+        .video-wrapper {
+            position: relative;
+            padding-top: 56.25%;
+            background: #020509;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            border: 1px solid var(--border);
+            cursor: zoom-in;
+        }
+
+        .video-wrapper.zoomed {
+            cursor: grab;
+        }
+
+        .video-wrapper.zoomed.dragging {
+            cursor: grabbing;
+        }
+
+        /* Zoom indicator */
+        .zoom-indicator {
+            position: absolute;
+            top: 10px; left: 12px;
+            background: rgba(0,0,0,0.65);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: var(--radius-sm);
+            color: rgba(255,255,255,0.9);
+            font-size: 0.68rem;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+            padding: 0.2rem 0.5rem;
+            backdrop-filter: blur(8px);
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .zoom-indicator.visible {
+            opacity: 1;
+        }
+
+        /* Zoom controls group (bottom-left) */
+        .zoom-controls {
+            position: absolute;
+            bottom: 12px; left: 12px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            z-index: 10;
+        }
+
+        .zoom-btn {
+            width: 36px; height: 36px;
+            background: rgba(0,0,0,0.65);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: var(--radius-sm);
+            color: rgba(255,255,255,0.85);
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all var(--t-normal);
+            backdrop-filter: blur(8px);
+            line-height: 1;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        .zoom-btn:hover {
+            background: var(--orange);
+            border-color: var(--orange);
+            color: white;
+            box-shadow: 0 2px 12px var(--orange-glow);
+        }
+
+        .zoom-btn:active {
+            transform: scale(0.92);
+        }
+
+        /* Reset button: only visible when zoomed */
+        .zoom-btn.zoom-reset-btn {
+            opacity: 0;
+            pointer-events: none;
+            font-size: 0.7rem;
+            letter-spacing: 0.5px;
+            width: auto;
+            padding: 0 0.6rem;
+        }
+
+        .zoom-btn.zoom-reset-btn.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .video-wrapper::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .fullscreen-overlay-btn {
+            position: absolute;
+            bottom: 12px; right: 12px;
+            width: 36px; height: 36px;
+            background: rgba(0,0,0,0.65);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: var(--radius-sm);
+            color: rgba(255,255,255,0.8);
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all var(--t-normal);
+            z-index: 10;
+            backdrop-filter: blur(8px);
+        }
+
+        .fullscreen-overlay-btn:hover {
+            background: var(--orange);
+            border-color: var(--orange);
+            color: white;
+            box-shadow: 0 2px 12px var(--orange-glow);
+        }
+
+        .video-wrapper:fullscreen,
+        .video-wrapper:-webkit-full-screen,
+        .video-wrapper:-moz-full-screen {
+            padding-top: 0;
+            border-radius: 0;
+        }
+
+        .video-wrapper:fullscreen video,
+        .video-wrapper:-webkit-full-screen video,
+        .video-wrapper:-moz-full-screen video {
+            position: relative;
+            width: 100%; height: 100%;
+            object-fit: contain;
+        }
+
+        .printer-video {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            object-fit: contain;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            will-change: transform;
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+        }
+
+        /* Loading indicator */
+        .loading-indicator {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.875rem;
+            color: var(--text-secondary);
+            z-index: 5;
+        }
+
+        .loading-indicator span {
+            font-size: 0.78rem;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+
+        .spinner {
+            width: 36px; height: 36px;
+            border: 2px solid rgba(255,255,255,0.07);
+            border-top: 2px solid var(--printer-accent, var(--orange));
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            box-shadow: 0 0 16px color-mix(in srgb, var(--printer-accent) 40%, transparent);
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ============================================
+           REC CONTROLS
+        ============================================ */
+        .rec-controls {
+            display: flex;
+            gap: 0.4rem;
+            margin-top: 0.75rem;
+            padding: 0.625rem 0.75rem;
+            background: rgba(0,0,0,0.25);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* Inline number input in controls */
+        .rec-controls input[type="number"] {
+            width: 46px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            padding: 0.3rem 0.4rem;
+            font-size: 0.78rem;
+            text-align: center;
+            font-family: 'JetBrains Mono', monospace;
+            transition: border-color var(--t-fast);
+        }
+
+        .rec-controls input[type="number"]:focus {
+            outline: none;
+            border-color: var(--printer-accent, var(--orange));
+        }
+
+        .rec-controls .sep {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            user-select: none;
+        }
+
+        .spacer { flex: 1; }
+
+        /* Control buttons (round) */
+        .control-btn {
+            width: 34px; height: 34px;
+            border: none;
+            border-radius: var(--radius-md);
+            background: rgba(255,255,255,0.07);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.9rem;
+            transition: all var(--t-fast);
+            flex-shrink: 0;
+        }
+
+        .control-btn:hover {
+            background: rgba(255,255,255,0.12);
+            border-color: var(--border-hover);
+            color: var(--text-primary);
+        }
+
+        .control-btn.active {
+            background: rgba(59,130,246,0.2);
+            border-color: rgba(59,130,246,0.5);
+            color: var(--blue-light);
+        }
+
+        .control-btn.delete-btn {
+            background: rgba(239,68,68,0.1);
+            border-color: rgba(239,68,68,0.25);
+            color: var(--error);
+        }
+
+        .control-btn.delete-btn:hover {
+            background: rgba(239,68,68,0.2);
+            border-color: rgba(239,68,68,0.5);
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.45rem 0.875rem;
+            border-radius: var(--radius-sm);
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.78rem;
+            transition: all var(--t-fast);
+            letter-spacing: 0.2px;
+            white-space: nowrap;
+        }
+
+        .btn:hover { filter: brightness(1.1); }
+        .btn:active { filter: brightness(0.93); transform: scale(0.98); }
+
+        .btn-primary {
+            background: var(--grad-button);
+            color: white;
+            box-shadow: 0 2px 10px var(--orange-glow);
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.06);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: var(--border-hover);
+        }
+
+        /* ============================================
+           STATUS GRID
+        ============================================ */
+        .status-bar {
+            position: absolute;
+            top: 8px; right: 10px;
+            display: flex;
+            align-items: center;
+            z-index: 12;
+            pointer-events: none;
+        }
+
+        .status-dot-indicator {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            flex-shrink: 0;
+            transition: background 0.3s ease;
+        }
+
+        .status-dot-indicator.dot-success {
+            background: var(--success);
+            box-shadow: 0 0 6px var(--success), 0 0 12px var(--success-glow);
+        }
+        .status-dot-indicator.dot-warning {
+            background: var(--warning);
+            box-shadow: 0 0 6px var(--warning), 0 0 12px var(--warning-glow);
+        }
+        .status-dot-indicator.dot-error {
+            background: var(--error);
+            box-shadow: 0 0 6px var(--error), 0 0 12px var(--error-glow);
+            animation: pulse-error 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse-error {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .status-bar-text {
+            display: none;
+            letter-spacing: 0.3px;
+        }
+
+        .status-bar-text.success { color: rgba(255,255,255,0.85); }
+        .status-bar-text.warning { color: var(--warning); }
+        .status-bar-text.error   { color: rgba(255,200,200,0.9); }
+
+        /* ============================================
+           DEBUG LOG
+        ============================================ */
+        .debug-log {
+            margin-top: 0.625rem;
+            max-height: 120px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.35);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 0.5rem 0.625rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.68rem;
+            display: none;
+        }
+
+        .log-entry {
+            padding: 0.15rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            line-height: 1.4;
+        }
+
+        .log-entry:last-child { border-bottom: none; }
+        .log-info  { color: var(--text-secondary); }
+        .log-warn  { color: var(--warning); }
+        .log-error { color: var(--error); }
+
+        /* ============================================
+           MODAL
+        ============================================ */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .modal-content {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: 2rem;
+            max-width: 460px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            animation: modal-in 0.2s ease;
+        }
+
+        @keyframes modal-in {
+            from { opacity: 0; transform: scale(0.96) translateY(8px); }
+            to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .modal-close-btn {
+            position: absolute;
+            top: 1rem; right: 1rem;
+            width: 30px; height: 30px;
+            border-radius: var(--radius-sm);
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all var(--t-fast);
+            line-height: 1;
+        }
+
+        .modal-close-btn:hover {
+            background: rgba(239,68,68,0.15);
+            border-color: rgba(239,68,68,0.4);
+            color: var(--error);
+        }
+
+        .modal-header {
+            margin-bottom: 1.5rem;
+            padding-right: 2rem;
+        }
+
+        .modal-title {
+            font-size: 1.35rem;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            background: var(--grad-brand);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.25rem;
+        }
+
+        .modal-subtitle {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+        }
+
+        /* Form */
+        .form-group { margin-bottom: 1rem; }
+
+        .form-label {
+            display: block;
+            font-size: 0.78rem;
+            font-weight: 600;
+            margin-bottom: 0.375rem;
+            color: var(--text-secondary);
+            letter-spacing: 0.2px;
+            text-transform: uppercase;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 0.65rem 0.875rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-family: inherit;
+            transition: border-color var(--t-fast), box-shadow var(--t-fast);
+            appearance: none;
+            -webkit-appearance: none;
+        }
+
+        .form-select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2394A3B8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.875rem center;
+            padding-right: 2.25rem;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--orange);
+            box-shadow: 0 0 0 3px var(--orange-glow);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+        }
+
+        .button-group .btn {
+            flex: 1;
+            padding: 0.7rem;
+            font-size: 0.85rem;
+            border-radius: var(--radius-md);
+        }
+
+        /* ============================================
+           FILAMENT TRACKER
+        ============================================ */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.25rem;
+        }
+
+        .section-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            letter-spacing: -0.2px;
+        }
+
+        .section-title-icon {
+            font-size: 1.1rem;
+        }
+
+        .filament-add-btn {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--blue) 0%, var(--orange-dark) 100%);
+            border: none;
+            color: white;
+            font-size: 1.3rem;
+            font-weight: 300;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            transition: all var(--t-normal);
+            box-shadow: 0 3px 12px rgba(30,58,138,0.4);
+            line-height: 1;
+        }
+
+        .filament-add-btn:hover {
+            transform: scale(1.08) rotate(90deg);
+            box-shadow: 0 5px 20px rgba(30,58,138,0.5);
+        }
+
+        .filament-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+            gap: 0.875rem;
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 0.25rem;
+        }
+
+        /* ============================================
+           TOAST
+        ============================================ */
+        #toast-container {
+            position: fixed;
+            bottom: 1.5rem; right: 1.5rem;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .toast {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--orange);
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius-md);
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            box-shadow: var(--shadow-lg);
+            animation: toast-in 0.25s ease;
+            max-width: 280px;
+        }
+
+        @keyframes toast-in {
+            from { opacity: 0; transform: translateX(20px) scale(0.97); }
+            to   { opacity: 1; transform: translateX(0) scale(1); }
+        }
+
+        /* ============================================
+           RESPONSIVE
+        ============================================ */
+        @media (max-width: 1024px) {
+            .printers-grid {
+                grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            }
+            .printers-grid.layout-horizontal {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .printers-grid.layout-vertical {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            header { padding: 0.75rem 1rem; }
+            .logo-text { font-size: 1.1rem; }
+            .header-controls { justify-content: flex-end; }
+            .container { padding: 1rem; gap: 1rem; }
+            .printers-grid {
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            }
+            .printers-grid.layout-horizontal {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.75rem;
+            }
+            .printers-grid.layout-vertical {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 500px) {
+            header {
+                padding: 0.5rem 0.75rem;
+            }
+            .logo-text { font-size: 1rem; }
+            .add-printer-btn span { display: none; }
+            .add-printer-btn { padding: 0.5rem; min-width: auto; }
+            .status-dot-item { font-size: 0.65rem; }
+            .container { padding: 0.75rem; gap: 0.75rem; }
+
+            .printers-grid,
+            .printers-grid.layout-horizontal,
+            .printers-grid.layout-vertical {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="toast-container"></div>
+
+    <header>
+        <div class="logo">
+            <div class="logo-icon">3D</div>
+            <span class="logo-text">Printer Dashboard</span>
+        </div>
+        <div class="header-controls">
+            <button class="add-printer-btn" onclick="addNewPrinter()">
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                    <line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/>
+                </svg>
+                <span>Add Printer</span>
+            </button>
+            <div class="theme-selector" style="position:relative; display:inline-block;">
+                <button class="layout-toggle-btn" id="themeToggleBtn" onclick="toggleThemeMenu()" title="Theme">
+                    <span>🎨</span>
+                </button>
+                <div id="themeMenu" style="display:none; position:absolute; top:calc(100% + 8px); right:0; background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius-md); padding:0.5rem; min-width:200px; box-shadow:var(--shadow-lg); z-index:300;">
+                    <div style="font-size:0.68rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.8px; padding:0.3rem 0.5rem; margin-bottom:0.25rem;">Theme</div>
+                    <button class="theme-option" onclick="setTheme('default')" data-theme="default" style="display:flex; align-items:center; gap:0.6rem; width:100%; padding:0.5rem 0.6rem; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-primary); font-size:0.78rem; font-weight:500; cursor:pointer; margin-bottom:0.25rem; transition:all 0.15s ease; font-family:inherit;">
+                        <span style="width:18px; height:18px; border-radius:50%; background:linear-gradient(135deg,#FF6B35,#1E3A8A); flex-shrink:0;"></span>
+                        Modern Dark
+                    </button>
+                    <button class="theme-option" onclick="setTheme('cyberpunk')" data-theme="cyberpunk" style="display:flex; align-items:center; gap:0.6rem; width:100%; padding:0.5rem 0.6rem; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-primary); font-size:0.78rem; font-weight:500; cursor:pointer; margin-bottom:0.25rem; transition:all 0.15s ease; font-family:inherit;">
+                        <span style="width:18px; height:18px; border-radius:50%; background:linear-gradient(135deg,#00d4ff,#ff6b35); flex-shrink:0;"></span>
+                        Cyberpunk
+                    </button>
+                    <button class="theme-option" onclick="setTheme('midnight')" data-theme="midnight" style="display:flex; align-items:center; gap:0.6rem; width:100%; padding:0.5rem 0.6rem; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-primary); font-size:0.78rem; font-weight:500; cursor:pointer; margin-bottom:0.25rem; transition:all 0.15s ease; font-family:inherit;">
+                        <span style="width:18px; height:18px; border-radius:50%; background:linear-gradient(135deg,#A78BFA,#EC4899); flex-shrink:0;"></span>
+                        Midnight Purple
+                    </button>
+                    <button class="theme-option" onclick="setTheme('forest')" data-theme="forest" style="display:flex; align-items:center; gap:0.6rem; width:100%; padding:0.5rem 0.6rem; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-primary); font-size:0.78rem; font-weight:500; cursor:pointer; margin-bottom:0.25rem; transition:all 0.15s ease; font-family:inherit;">
+                        <span style="width:18px; height:18px; border-radius:50%; background:linear-gradient(135deg,#10B981,#065F46); flex-shrink:0;"></span>
+                        Forest
+                    </button>
+                    <div style="height:1px; background:var(--border); margin:0.4rem 0;"></div>
+                    <button class="theme-option" onclick="setTheme('custom')" data-theme="custom" style="display:flex; align-items:center; gap:0.6rem; width:100%; padding:0.5rem 0.6rem; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-primary); font-size:0.78rem; font-weight:500; cursor:pointer; transition:all 0.15s ease; font-family:inherit;">
+                        <span style="width:18px; height:18px; border-radius:50%; background:linear-gradient(135deg,#888,#333); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:10px;">🖼</span>
+                        Custom Image
+                    </button>
+                    <input type="file" id="customBgInput" accept="image/*" style="display:none;" onchange="handleCustomBgUpload(event)">
+                </div>
+            </div>
+            <button class="layout-toggle-btn" id="layoutToggleBtn" onclick="toggleLayout()" title="Toggle Layout">
+                <span id="layoutIcon">▤</span>
+            </button>
+            <div class="status-indicators" id="statusIndicators"></div>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <!-- Setup Instructions (collapsible) -->
+        <div class="instructions-card" id="instructionsCard">
+            <div style="display:flex; align-items:center; justify-content:space-between; cursor:pointer;" onclick="toggleInstructions()">
+                <p class="instructions-title" style="margin:0;">⚡ Setup Instructions</p>
+                <span id="instructionsArrow" style="font-size:0.75rem; color:var(--text-muted); transition:transform 0.25s ease; transform:rotate(0deg);">▶</span>
+            </div>
+            <div id="instructionsBody" style="display:none; margin-top:0.75rem;">
+                <!-- Tabs -->
+                <div style="display:flex; gap:0.25rem; margin-bottom:0.75rem;">
+                    <button class="setup-tab active" id="tabAnycubic" onclick="switchSetupTab('anycubic')">Anycubic</button>
+                    <button class="setup-tab" id="tabSnapmaker" onclick="switchSetupTab('snapmaker')">Snapmaker</button>
+                </div>
+
+                <!-- Anycubic steps -->
+                <div id="setupAnycubic">
+                    <p class="instructions-sub">Connect your Anycubic printer camera stream</p>
+                    <div class="steps-grid">
+                        <div class="step-card complete" id="step1" data-tooltip="On the printer screen go to&#10;Settings → Network → LAN Mode&#10;and enable it.">
+                            <div class="step-number">1</div>
+                            <div class="step-title">Set Printer to LAN Mode</div>
+                        </div>
+                        <div class="step-card complete" id="step2" data-tooltip="Open Anycubic Slicer or&#10;any compatible slicer with&#10;LAN printing support.">
+                            <div class="step-number">2</div>
+                            <div class="step-title">Open Slicer</div>
+                        </div>
+                        <div class="step-card complete" id="step3" data-tooltip="In the slicer, go to&#10;Device → Camera and&#10;activate the live view.">
+                            <div class="step-number">3</div>
+                            <div class="step-title">Activate Camera</div>
+                        </div>
+                        <div class="step-card complete" id="step4" data-tooltip="Click ⚙️ on a printer card,&#10;enter the IP and port&#10;(default: 18088/flv).">
+                            <div class="step-number">4</div>
+                            <div class="step-title">Connect Stream</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Snapmaker steps -->
+                <div id="setupSnapmaker" style="display:none;">
+                    <p class="instructions-sub">Connect your Snapmaker U1 camera stream</p>
+                    <div class="steps-grid">
+                        <div class="step-card complete" data-tooltip="Go to the printer touchscreen&#10;or Luban to find the&#10;printer IP address.">
+                            <div class="step-number">1</div>
+                            <div class="step-title">Get Printer IP</div>
+                        </div>
+                        <div class="step-card complete" data-tooltip="Open http://PRINTER_IP in a browser.&#10;Go to Settings and copy&#10;the API Key.">
+                            <div class="step-number">2</div>
+                            <div class="step-title">Get API Key from Web UI</div>
+                        </div>
+                        <div class="step-card complete" data-tooltip="Run the Python keepalive script&#10;with your IP and API token&#10;to keep the camera active.">
+                            <div class="step-number">3</div>
+                            <div class="step-title">Run Keepalive Script</div>
+                        </div>
+                        <div class="step-card complete" data-tooltip="Click ⚙️ on a printer card,&#10;enter the IP and select port&#10;/server/files/camera/monitor.jpg">
+                            <div class="step-number">4</div>
+                            <div class="step-title">Select Port & Connect</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Printers Grid -->
+        <div class="printers-grid" id="printersGrid"></div>
+
+        <!-- Filament Tracker -->
+        <div class="glass" style="padding: 1.5rem;">
+            <div class="section-header">
+                <h3 class="section-title">
+                    <span class="section-title-icon">🧵</span>
+                    Filament Stock
+                </h3>
+                <button class="filament-add-btn" onclick="openFilamentModal()" title="Add filament">+</button>
+            </div>
+            <div id="filamentsContainer" class="filament-grid">
+                <div style="text-align:center; padding:2rem 1rem; color:var(--text-muted); grid-column:1/-1;">
+                    <div style="font-size:2rem; margin-bottom:0.5rem; opacity:0.5;">🧵</div>
+                    <p style="font-size:0.82rem;">No filaments registered</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- CONFIG MODAL -->
+    <div class="modal" id="configModal">
+        <div class="modal-content">
+            <button class="modal-close-btn" onclick="closeConfigModal()">✕</button>
+            <div class="modal-header">
+                <h2 class="modal-title" id="configModalTitle">Camera Configuration</h2>
+                <p class="modal-subtitle" id="configModalSubtitle">Configure your printer camera connection</p>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Printer Name (optional)</label>
+                <input type="text" class="form-input" id="printerNameInput" placeholder="My Printer">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Protocol</label>
+                <select class="form-select" id="protocolSelect">
+                    <option value="http">HTTP</option>
+                    <option value="https">HTTPS</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">IP Address or Domain</label>
+                <input type="text" class="form-input" id="ipInput" placeholder="192.168.1.6">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Port / Path</label>
+                <select class="form-select" id="portSelect" onchange="handlePortChange()">
+                    <option value="18088/flv">18088/flv (Anycubic)</option>
+                    <option value="/flv">/flv (Anycubic Dominio)</option>
+                    <option value="/server/files/camera/monitor.jpg">/server/files/camera/monitor.jpg (Snapmaker U1)</option>
+                    <option value="custom">✏️ Custom…</option>
+                </select>
+                <input type="text" class="form-input" id="portInput" placeholder="Enter custom port/path" style="display:none; margin-top:0.5rem;">
+            </div>
+            <div class="button-group">
+                <button class="btn btn-secondary" onclick="closeConfigModal()">Cancel</button>
+                <button class="btn btn-primary" id="saveConfigBtn">Connect</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FILAMENT MODAL -->
+    <div class="modal" id="filamentModal">
+        <div class="modal-content">
+            <button class="modal-close-btn" onclick="closeFilamentModal()">✕</button>
+            <div class="modal-header">
+                <h2 class="modal-title" id="filamentModalTitle">New Filament</h2>
+            </div>
+            <form onsubmit="saveFilament(event)">
+                <div class="form-group">
+                    <label class="form-label">Material Type</label>
+                    <select id="filamentType" class="form-select" required>
+                        <option value="">Select a type</option>
+                        <option value="PLA">PLA</option>
+                        <option value="ABS">ABS</option>
+                        <option value="PETG">PETG</option>
+                        <option value="ASA">ASA</option>
+                        <option value="TPU">TPU</option>
+                        <option value="HIPS">HIPS</option>
+                        <option value="Nylon">Nylon</option>
+                        <option value="PC">PC (Polycarbonate)</option>
+                        <option value="custom">➕ Add new type</option>
+                    </select>
+                    <input type="text" id="customType" class="form-input" placeholder="Enter type" style="display:none; margin-top:0.5rem;">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Brand</label>
+                    <select id="filamentBrand" class="form-select" required>
+                        <option value="">Select a brand</option>
+                        <option value="Anycubic">Anycubic</option>
+                        <option value="Jayo">Jayo</option>
+                        <option value="Elegoo">Elegoo</option>
+                        <option value="Sunlu">Sunlu</option>
+                        <option value="eSUN">eSUN</option>
+                        <option value="Creality">Creality</option>
+                        <option value="custom">➕ Add new brand</option>
+                    </select>
+                    <input type="text" id="customBrand" class="form-input" placeholder="Enter brand" style="display:none; margin-top:0.5rem;">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Color</label>
+                    <select id="filamentColor" class="form-select">
+                        <option value="">Select a color</option>
+                        <option value="#FFFFFF">White</option>
+                        <option value="#000000">Black</option>
+                        <option value="#FF0000">Red</option>
+                        <option value="#00FF00">Green</option>
+                        <option value="#0000FF">Blue</option>
+                        <option value="#FFFF00">Yellow</option>
+                        <option value="#FFA500">Orange</option>
+                        <option value="#800080">Purple</option>
+                        <option value="#FFC0CB">Pink</option>
+                        <option value="#808080">Gray</option>
+                        <option value="#A52A2A">Brown</option>
+                        <option value="#C0C0C0">Silver</option>
+                        <option value="#FFD700">Gold</option>
+                        <option value="custom">🎨 Custom color</option>
+                    </select>
+                    <input type="color" id="colorPicker" value="#FF6B35" style="width:100%; height:40px; margin-top:0.5rem; border:none; border-radius:var(--radius-md); cursor:pointer; background:transparent;">
+                    <input type="text" id="customColorName" class="form-input" placeholder="Color name" style="display:none; margin-top:0.5rem;">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Weight (g)</label>
+                    <input type="number" id="filamentWeight" class="form-input" value="1000" min="1" max="5000" required>
+                </div>
+                <div class="button-group">
+                    <button type="button" class="btn btn-secondary" onclick="closeFilamentModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="submitFilamentBtn">Add</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // ========================================
+        // TOAST NOTIFICATIONS
+        // ========================================
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerHTML = `<span style="opacity:0.7;font-size:0.9rem;">✓</span> ${message}`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(10px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 2700);
+        }
+
+        // ========================================
+        // PRINTER STATE MANAGEMENT
+        // ========================================
+        const printers = {};
+        let printerCount = 0;
+        let currentConfigPrinter = null;
+        const PRINTER_COLORS = 8;
+
+        function createPrinterState(printerNum) {
+            return {
+                flvPlayer: null,
+                streamUrl: '',
+                logBuffer: [],
+                lastLogState: '',
+                lastVideoState: '',
+                isPlaying: false,
+                mediaRecorder: null,
+                recordedChunks: [],
+                isRecording: false,
+                isTimelapse: false,
+                timelapseInterval: null,
+                timelapseFrames: [],
+                lastLatency: '',
+                isSnapmaker: false,
+                snapmakerLoopRunning: false,
+                keepaliveTimer: null
+            };
+        }
+
+        // ========================================
+        // PRINTER CARD CREATION
+        // ========================================
+        function createPrinterCard(printerNum) {
+            const colorClass = `printer-color-${((printerNum - 1) % PRINTER_COLORS) + 1}`;
+
+            const card = document.createElement('div');
+            card.className = `printer-card ${colorClass}`;
+            card.id = `printer${printerNum}Card`;
+
+            card.innerHTML = `
+                <div class="printer-header">
+                    <div class="printer-title">
+                        <span class="printer-badge">P${printerNum}</span>
+                        <span class="printer-name" id="printer${printerNum}Name">Printer ${printerNum}</span>
+                    </div>
+                    <div class="printer-header-controls">
+                        <button class="control-btn" onclick="showConfigModal(${printerNum})" title="Configure">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                            </svg>
+                        </button>
+                        <button class="control-btn delete-btn" onclick="removePrinter(${printerNum})" title="Remove Printer">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="printer-body">
+                    <div class="video-wrapper" id="videoWrapper${printerNum}">
+                        <video id="videoElement${printerNum}" class="printer-video" muted></video>
+                        <div class="zoom-indicator" id="zoomIndicator${printerNum}">1.0×</div>
+                        <div class="zoom-controls">
+                            <button class="zoom-btn" onclick="stepZoom(${printerNum}, -1)" title="Zoom out">−</button>
+                            <button class="zoom-btn zoom-reset-btn" id="zoomResetBtn${printerNum}" onclick="resetZoom(${printerNum})" title="Reset zoom">1×</button>
+                            <button class="zoom-btn" onclick="stepZoom(${printerNum}, +1)" title="Zoom in">+</button>
+                        </div>
+                        <button class="fullscreen-overlay-btn" onclick="toggleFullscreen(${printerNum})" title="Fullscreen">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                                <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+                            </svg>
+                        </button>
+                        <div class="loading-indicator" id="loadingIndicator${printerNum}">
+                            <div class="spinner"></div>
+                            <span>Connecting to camera…</span>
+                        </div>
+                        <div class="status-bar">
+                            <span class="status-dot-indicator" id="statusDotInd${printerNum}"></span>
+                            <span class="status-bar-text" id="statusText${printerNum}">Initializing</span>
+                        </div>
+                    </div>
+
+                    <div class="rec-controls">
+                        <button class="btn btn-secondary" onclick="toggleRecording(${printerNum})" id="btnRecord${printerNum}">🔴 Rec</button>
+                        <button class="btn btn-secondary" onclick="toggleTimelapse(${printerNum})" id="btnTimelapse${printerNum}">⏱ TL</button>
+                        <button class="btn btn-secondary" onclick="takeSnapshot(${printerNum})">📸</button>
+                        <input type="number" id="timelapseInterval${printerNum}" value="5" min="1" max="999">
+                        <span class="sep">s/f</span>
+                        <div class="spacer"></div>
+                        <button class="control-btn" onclick="reconnectPrinter(${printerNum})" title="Reconnect">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                            </svg>
+                        </button>
+                        <button class="control-btn" onclick="toggleLog(${printerNum})" id="toggleLogBtn${printerNum}" title="Debug Log">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="15" y2="18"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <span id="speedStatus${printerNum}" style="display:none;">—</span>
+                    <span id="latencyStatus${printerNum}" style="display:none;">—</span>
+                    <span id="urlStatus${printerNum}" style="display:none;">—</span>
+
+                    <div class="debug-log" id="debugLog${printerNum}">
+                        <div class="log-entry log-info">Debug log initialized…</div>
+                    </div>
+                </div>
+            `;
+
+            return card;
+        }
+
+        function createStatusIndicator(printerNum) {
+            const indicator = document.createElement('div');
+            indicator.className = 'status-indicator';
+            indicator.id = `status${printerNum}Container`;
+            indicator.innerHTML = `
+                <div class="status-dot" id="connectionDot${printerNum}"></div>
+                <span id="connectionStatus${printerNum}">P${printerNum}: Disconnected</span>
+            `;
+            return indicator;
+        }
+
+        // ========================================
+        // ADD / REMOVE PRINTERS
+        // ========================================
+        function getNextPrinterNum() {
+            let num = 1;
+            while (printers[num]) num++;
+            return num;
+        }
+
+        function addNewPrinter() {
+            const printerNum = getNextPrinterNum();
+            if (printerNum > printerCount) printerCount = printerNum;
+
+            printers[printerNum] = createPrinterState(printerNum);
+
+            const grid = document.getElementById('printersGrid');
+            grid.appendChild(createPrinterCard(printerNum));
+
+            const statusContainer = document.getElementById('statusIndicators');
+            statusContainer.appendChild(createStatusIndicator(printerNum));
+
+            initZoom(printerNum);
+            savePrinterList();
+
+            const savedIP = localStorage.getItem(`printer${printerNum}_ip`);
+            if (savedIP) {
+                loadPrinterConfig(printerNum);
+            } else {
+                showConfigModal(printerNum);
+            }
+
+            showToast(`Printer ${printerNum} added`);
+        }
+
+        function removePrinter(printerNum) {
+            if (!confirm(`Remove Printer ${printerNum}?`)) return;
+
+            destroyPlayer(printerNum);
+
+            const card = document.getElementById(`printer${printerNum}Card`);
+            if (card) card.remove();
+
+            const status = document.getElementById(`status${printerNum}Container`);
+            if (status) status.remove();
+
+            localStorage.removeItem(`printer${printerNum}_name`);
+            localStorage.removeItem(`printer${printerNum}_protocol`);
+            localStorage.removeItem(`printer${printerNum}_ip`);
+            localStorage.removeItem(`printer${printerNum}_port`);
+
+            delete printers[printerNum];
+            savePrinterList();
+
+            showToast(`Printer ${printerNum} removed`);
+        }
+
+        function savePrinterList() {
+            localStorage.setItem('activePrinters', JSON.stringify(Object.keys(printers).map(Number)));
+            localStorage.setItem('printerCount', printerCount.toString());
+        }
+
+        function loadPrinterList() {
+            const savedCount = localStorage.getItem('printerCount');
+            if (savedCount) printerCount = parseInt(savedCount);
+
+            const saved = localStorage.getItem('activePrinters');
+            if (saved) {
+                JSON.parse(saved).forEach(printerNum => {
+                    printers[printerNum] = createPrinterState(printerNum);
+                    document.getElementById('printersGrid').appendChild(createPrinterCard(printerNum));
+                    document.getElementById('statusIndicators').appendChild(createStatusIndicator(printerNum));
+                    initZoom(printerNum);
+                    loadPrinterConfig(printerNum);
+                });
+            }
+
+            if (Object.keys(printers).length === 0) addNewPrinter();
+        }
+
+        // ========================================
+        // CONFIG MODAL
+        // ========================================
+        function showConfigModal(printerNum) {
+            currentConfigPrinter = printerNum;
+            const prefix = `printer${printerNum}_`;
+
+            document.getElementById('configModalTitle').textContent = `Printer ${printerNum} Configuration`;
+            document.getElementById('configModalSubtitle').textContent = `Configure camera connection for Printer ${printerNum}`;
+            document.getElementById('printerNameInput').value = localStorage.getItem(`${prefix}name`) || `Printer ${printerNum}`;
+            document.getElementById('protocolSelect').value = localStorage.getItem(`${prefix}protocol`) || 'http';
+            document.getElementById('ipInput').value = localStorage.getItem(`${prefix}ip`) || '';
+
+            const savedPort = localStorage.getItem(`${prefix}port`) || '18088/flv';
+            const portSelect = document.getElementById('portSelect');
+            const portInput = document.getElementById('portInput');
+
+            if (savedPort === '18088/flv' || savedPort === '/flv' || savedPort === '/server/files/camera/monitor.jpg') {
+                portSelect.value = savedPort;
+                portInput.style.display = 'none';
+                portInput.value = '';
+            } else {
+                portSelect.value = 'custom';
+                portInput.style.display = 'block';
+                portInput.value = savedPort;
+            }
+
+            document.getElementById('configModal').style.display = 'flex';
+        }
+
+        function handlePortChange() {
+            const portSelect = document.getElementById('portSelect');
+            const portInput = document.getElementById('portInput');
+            if (portSelect.value === 'custom') {
+                portInput.style.display = 'block';
+                portInput.focus();
+            } else {
+                portInput.style.display = 'none';
+                portInput.value = '';
+            }
+        }
+
+        function closeConfigModal() {
+            document.getElementById('configModal').style.display = 'none';
+        }
+
+        function saveConfig(printerNum, name, protocol, ip, port) {
+            const prefix = `printer${printerNum}_`;
+            localStorage.setItem(`${prefix}name`, name);
+            localStorage.setItem(`${prefix}protocol`, protocol);
+            localStorage.setItem(`${prefix}ip`, ip);
+            localStorage.setItem(`${prefix}port`, port || '');
+
+            printers[printerNum].streamUrl = buildUrl(protocol, ip, port);
+            printers[printerNum].isSnapmaker = (port === '/server/files/camera/monitor.jpg');
+            document.getElementById(`urlStatus${printerNum}`).textContent = printers[printerNum].streamUrl;
+            document.getElementById(`printer${printerNum}Name`).textContent = name || `Printer ${printerNum}`;
+
+            closeConfigModal();
+            initializePlayer(printerNum);
+        }
+
+        function loadPrinterConfig(printerNum) {
+            const prefix = `printer${printerNum}_`;
+            const savedIP = localStorage.getItem(`${prefix}ip`);
+            if (savedIP) {
+                const protocol = localStorage.getItem(`${prefix}protocol`) || 'http';
+                const port = localStorage.getItem(`${prefix}port`) || '';
+                const name = localStorage.getItem(`${prefix}name`) || `Printer ${printerNum}`;
+
+                printers[printerNum].streamUrl = buildUrl(protocol, savedIP, port);
+                printers[printerNum].isSnapmaker = (port === '/server/files/camera/monitor.jpg');
+                document.getElementById(`urlStatus${printerNum}`).textContent = printers[printerNum].streamUrl;
+                document.getElementById(`printer${printerNum}Name`).textContent = name;
+
+                initializePlayer(printerNum);
+            }
+        }
+
+        function buildUrl(protocol, ip, port) {
+            let url = `${protocol}://${ip}`;
+            if (port && port.trim() !== '') {
+                const p = port.trim();
+                url += p.startsWith('/') ? p : `:${p}`;
+            }
+            return url;
+        }
+
+        // ========================================
+        // LOGGING
+        // ========================================
+        function addLog(printerNum, message, type = 'info') {
+            const printer = printers[printerNum];
+            if (!printer) return;
+
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+
+            if (printer.lastLogState !== message) {
+                printer.lastLogState = message;
+                printer.logBuffer.push({ message: logEntry, type });
+                if (printer.logBuffer.length > 100) printer.logBuffer = printer.logBuffer.slice(-100);
+                updateLogDisplay(printerNum);
+            }
+        }
+
+        function updateLogDisplay(printerNum) {
+            const debugLog = document.getElementById(`debugLog${printerNum}`);
+            if (!debugLog) return;
+            debugLog.innerHTML = '';
+            printers[printerNum].logBuffer.forEach(entry => {
+                const div = document.createElement('div');
+                div.className = `log-entry log-${entry.type}`;
+                div.textContent = entry.message;
+                debugLog.appendChild(div);
+            });
+            debugLog.scrollTop = debugLog.scrollHeight;
+        }
+
+        function toggleLog(printerNum) {
+            const log = document.getElementById(`debugLog${printerNum}`);
+            const btn = document.getElementById(`toggleLogBtn${printerNum}`);
+            if (!log || !btn) return;
+            const isVisible = log.style.display !== 'none';
+            log.style.display = isVisible ? 'none' : 'block';
+            btn.classList.toggle('active', !isVisible);
+        }
+
+        // ========================================
+        // CONNECTION STATUS
+        // ========================================
+        function updateConnectionStatus(printerNum, status, connected) {
+            const statusEl = document.getElementById(`connectionStatus${printerNum}`);
+            const dotEl = document.getElementById(`connectionDot${printerNum}`);
+            if (statusEl) statusEl.textContent = `P${printerNum}: ${status}`;
+            if (dotEl) dotEl.className = `status-dot ${connected ? 'connected' : ''}`;
+        }
+
+        // ========================================
+        // VIDEO PLAYER
+        // ========================================
+        function checkBrowserSupport(printerNum) {
+            if (!flvjs.isSupported()) {
+                addLog(printerNum, 'FLV.js not supported', 'error');
+                setStatus(printerNum, 'Browser Not Supported', 'error');
+                document.getElementById(`loadingIndicator${printerNum}`).style.display = 'none';
+                return false;
+            }
+            return true;
+        }
+
+        function destroyPlayer(printerNum) {
+            const printer = printers[printerNum];
+            if (!printer) return;
+
+            // Destroy Snapmaker stream if active
+            destroySnapmakerStream(printerNum);
+
+            // Stop fallback loop if active
+            printer.fallbackLoopRunning = false;
+
+            const video = document.getElementById(`videoElement${printerNum}`);
+
+            if (printer.flvPlayer) {
+                addLog(printerNum, 'Destroying player…', 'warn');
+                printer.flvPlayer.unload();
+                printer.flvPlayer.detachMediaElement();
+                printer.flvPlayer.destroy();
+                printer.flvPlayer = null;
+            }
+            if (video) {
+                video.pause();
+                video.removeAttribute('src');
+                video.load();
+                video.style.display = 'block';
+            }
+
+            // Remove snapmaker/fallback img if present
+            const snapImg = document.getElementById(`snapImg${printerNum}`);
+            if (snapImg) {
+                if (snapImg.src && snapImg.src.startsWith('blob:')) URL.revokeObjectURL(snapImg.src);
+                snapImg.remove();
+            }
+        }
+
+        function setStatus(printerNum, text, level) {
+            const el = document.getElementById(`statusText${printerNum}`);
+            const dot = document.getElementById(`statusDotInd${printerNum}`);
+            if (el) {
+                el.textContent = text;
+                el.className = 'status-bar-text' + (level ? ' ' + level : '');
+            }
+            if (dot) {
+                dot.className = 'status-dot-indicator' + (level ? ' dot-' + level : '');
+            }
+        }
+
+        function createPlayerFallback(printerNum) {
+            const printer = printers[printerNum];
+            if (!printer) return;
+
+            const video = document.getElementById(`videoElement${printerNum}`);
+            const loadingIndicator = document.getElementById(`loadingIndicator${printerNum}`);
+            const statusText = document.getElementById(`statusText${printerNum}`);
+            const speedStatus = document.getElementById(`speedStatus${printerNum}`);
+            const latencyStatus = document.getElementById(`latencyStatus${printerNum}`);
+            const wrapper = document.getElementById(`videoWrapper${printerNum}`);
+
+            addLog(printerNum, 'MediaSource not available, using image fallback', 'warn');
+
+            // Hide video, use img refresh like Snapmaker
+            video.style.display = 'none';
+
+            let img = document.getElementById(`snapImg${printerNum}`);
+            if (!img) {
+                img = document.createElement('img');
+                img.id = `snapImg${printerNum}`;
+                img.className = 'printer-video';
+                img.alt = 'Camera';
+                img.draggable = false;
+                wrapper.appendChild(img);
+            }
+            img.style.display = 'block';
+
+            updateConnectionStatus(printerNum, 'Connecting…', false);
+            loadingIndicator.style.display = 'flex';
+
+            printer.fallbackLoopRunning = true;
+            let wasConnected = false;
+
+            async function fallbackLoop() {
+                while (printer.fallbackLoopRunning) {
+                    const t0 = performance.now();
+                    try {
+                        const controller = new AbortController();
+                        const timeout = setTimeout(() => controller.abort(), 4000);
+                        const response = await fetch(printer.streamUrl + '?_=' + Date.now(), {
+                            mode: 'cors',
+                            signal: controller.signal
+                        });
+                        clearTimeout(timeout);
+                        if (!response.ok) throw new Error('HTTP ' + response.status);
+                        const blob = await response.blob();
+                        const url = URL.createObjectURL(blob);
+                        const oldSrc = img.src;
+                        img.src = url;
+                        if (oldSrc && oldSrc.startsWith('blob:')) URL.revokeObjectURL(oldSrc);
+
+                        if (!wasConnected) {
+                            setStatus(printerNum, 'Streaming', 'success');
+                            updateConnectionStatus(printerNum, 'Streaming', true);
+                            loadingIndicator.style.display = 'none';
+                            wasConnected = true;
+                        }
+                    } catch(e) {
+                        if (wasConnected) {
+                            setStatus(printerNum, 'Sin senal', 'error');
+                            updateConnectionStatus(printerNum, 'No Signal', false);
+                            loadingIndicator.style.display = 'none';
+                            wasConnected = false;
+                        }
+                    }
+                    const elapsed = performance.now() - t0;
+                    const wait = Math.max(0, 100 - elapsed);
+                    if (wait > 0) await new Promise(r => setTimeout(r, wait));
+                }
+            }
+            fallbackLoop();
+        }
+
+        function createPlayer(printerNum) {
+            const printer = printers[printerNum];
+            if (!printer) return;
+
+            const video = document.getElementById(`videoElement${printerNum}`);
+            const loadingIndicator = document.getElementById(`loadingIndicator${printerNum}`);
+            const statusText = document.getElementById(`statusText${printerNum}`);
+            const speedStatus = document.getElementById(`speedStatus${printerNum}`);
+
+            destroyPlayer(printerNum);
+            if (!printer.streamUrl) { showConfigModal(printerNum); return; }
+
+            // If flv.js not supported (e.g. Safari iOS on HTTP), use fallback
+            if (!flvjs.isSupported()) {
+                addLog(printerNum, 'FLV.js not supported, trying fallback…', 'warn');
+                createPlayerFallback(printerNum);
+                return;
+            }
+
+            printer.lastVideoState = '';
+            printer.lastLogState = '';
+
+            addLog(printerNum, `Connecting to: ${printer.streamUrl}`, 'info');
+            updateConnectionStatus(printerNum, 'Connecting…', false);
+
+            printer.flvPlayer = flvjs.createPlayer(
+                { type: 'flv', url: printer.streamUrl, isLive: true, cors: true },
+                {
+                    enableStashBuffer: false,
+                    stashInitialSize: 64,
+                    autoCleanupMaxBackwardDuration: 10,
+                    autoCleanupMinBackwardDuration: 5,
+                    enableWorker: false,
+                    lazyLoad: false
+                }
+            );
+            printer.flvPlayer.attachMediaElement(video);
+
+            // Track reconnect attempts for exponential backoff
+            if (!printer.reconnectAttempts) printer.reconnectAttempts = 0;
+
+            printer.flvPlayer.on(flvjs.Events.ERROR, (errorType, errorDetail) => {
+                addLog(printerNum, `ERROR: ${errorType} - ${errorDetail}`, 'error');
+                setStatus(printerNum, 'Error', 'error');
+                updateConnectionStatus(printerNum, 'Connection Error', false);
+                loadingIndicator.style.display = 'none';
+                printer.reconnectAttempts++;
+                const delay = Math.min(3000 * Math.pow(1.5, printer.reconnectAttempts - 1), 15000);
+                setTimeout(() => {
+                    if (printers[printerNum]) {
+                        addLog(printerNum, 'Auto-reconnecting…', 'warn');
+                        createPlayer(printerNum);
+                    }
+                }, delay);
+            });
+
+            printer.flvPlayer.on(flvjs.Events.STATISTICS_INFO, (stats) => {
+                speedStatus.textContent = `${stats.speed ? stats.speed.toFixed(2) : 0} KB/s`;
+            });
+
+            // Use named handlers to prevent stacking on reconnect
+            const onCanPlay = () => {
+                addLog(printerNum, 'Video ready', 'info');
+                setStatus(printerNum, 'Ready', 'success');
+                updateConnectionStatus(printerNum, 'Connected', true);
+                loadingIndicator.style.display = 'none';
+                video.play().catch(() => {});
+            };
+            const onPlaying = () => {
+                addLog(printerNum, 'Streaming', 'info');
+                setStatus(printerNum, 'Streaming', 'success');
+                updateConnectionStatus(printerNum, 'Streaming', true);
+                loadingIndicator.style.display = 'none';
+                printer.isPlaying = true;
+                printer.reconnectAttempts = 0;
+            };
+            const onWaiting = () => {
+                if (!printer.isPlaying) {
+                    setStatus(printerNum, 'Buffering', 'warning');
+                    updateConnectionStatus(printerNum, 'Buffering…', false);
+                }
+            };
+            const onPause = () => {
+                printer.isPlaying = false;
+            };
+            const onError = (e) => {
+                addLog(printerNum, `Video error: ${e.message || 'Unknown'}`, 'error');
+                setStatus(printerNum, 'Video Error', 'error');
+            };
+
+            // Remove previous handlers before adding new ones
+            video.removeEventListener('canplay', video._onCanPlay);
+            video.removeEventListener('playing', video._onPlaying);
+            video.removeEventListener('waiting', video._onWaiting);
+            video.removeEventListener('pause', video._onPause);
+            video.removeEventListener('error', video._onError);
+            video._onCanPlay = onCanPlay;
+            video._onPlaying = onPlaying;
+            video._onWaiting = onWaiting;
+            video._onPause = onPause;
+            video._onError = onError;
+            video.addEventListener('canplay', onCanPlay);
+            video.addEventListener('playing', onPlaying);
+            video.addEventListener('waiting', onWaiting);
+            video.addEventListener('pause', onPause);
+            video.addEventListener('error', onError);
+
+            printer.flvPlayer.load();
+            loadingIndicator.style.display = 'flex';
+        }
+
+        // ========================================
+        // SNAPMAKER IMAGE-REFRESH STREAM
+        // ========================================
+        function destroySnapmakerStream(printerNum) {
+            const printer = printers[printerNum];
+            if (!printer) return;
+            if (printer.snapmakerLoopRunning) {
+                printer.snapmakerLoopRunning = false;
+            }
+            if (printer.keepaliveTimer) {
+                clearInterval(printer.keepaliveTimer);
+                printer.keepaliveTimer = null;
+            }
+        }
+
+        function sendSnapmakerKeepalive(printerNum) {
+            const printer = printers[printerNum];
+            if (!printer || !printer.snapmakerLoopRunning) return;
+            const prefix = `printer${printerNum}_`;
+            const ip = localStorage.getItem(`${prefix}ip`);
+            if (!ip) return;
+
+            // Use current protocol to determine ws/wss
+            const wsProto = location.protocol === 'https:' ? 'wss' : 'ws';
+            const wsUrl = `${wsProto}://${ip}/websocket`;
+
+            try {
+                const ws = new WebSocket(wsUrl);
+                ws.onopen = () => {
+                    ws.send(JSON.stringify({
+                        id: Date.now(),
+                        jsonrpc: "2.0",
+                        method: "camera.start_monitor",
+                        params: { domain: "lan", interval: 0 }
+                    }));
+                };
+                ws.onmessage = () => {
+                    try { ws.close(); } catch(_){}
+                };
+                ws.onerror = () => {};
+                setTimeout(() => { try { ws.close(); } catch(_){} }, 1500);
+            } catch(e) {}
+        }
+
+        function startSnapmakerStream(printerNum) {
+            const printer = printers[printerNum];
+            if (!printer) return;
+
+            destroySnapmakerStream(printerNum);
+
+            const video = document.getElementById(`videoElement${printerNum}`);
+            const loadingIndicator = document.getElementById(`loadingIndicator${printerNum}`);
+            const statusText = document.getElementById(`statusText${printerNum}`);
+            const speedStatus = document.getElementById(`speedStatus${printerNum}`);
+            const latencyStatus = document.getElementById(`latencyStatus${printerNum}`);
+            const wrapper = document.getElementById(`videoWrapper${printerNum}`);
+
+            // Hide video, use img instead
+            video.style.display = 'none';
+
+            let img = document.getElementById(`snapImg${printerNum}`);
+            if (!img) {
+                img = document.createElement('img');
+                img.id = `snapImg${printerNum}`;
+                img.className = 'printer-video';
+                img.alt = 'Snapmaker camera';
+                img.draggable = false;
+                img.style.imageRendering = 'auto';
+                wrapper.appendChild(img);
+            }
+            img.style.display = 'block';
+
+            addLog(printerNum, `Connecting to Snapmaker: ${printer.streamUrl}`, 'info');
+            updateConnectionStatus(printerNum, 'Connecting…', false);
+            loadingIndicator.style.display = 'flex';
+
+            // Start keepalive
+            sendSnapmakerKeepalive(printerNum);
+            printer.keepaliveTimer = setInterval(() => sendSnapmakerKeepalive(printerNum), 2000);
+
+            // Image refresh loop
+            printer.snapmakerLoopRunning = true;
+            let wasStreaming = false;
+
+            async function refreshLoop() {
+                while (printer.snapmakerLoopRunning) {
+                    const t0 = performance.now();
+                    try {
+                        await new Promise((resolve, reject) => {
+                            const tempImg = new Image();
+                            const timeout = setTimeout(() => {
+                                tempImg.onload = tempImg.onerror = null;
+                                reject(new Error('timeout'));
+                            }, 4000);
+
+                            tempImg.onload = () => {
+                                clearTimeout(timeout);
+                                img.src = tempImg.src;
+                                if (!wasStreaming) {
+                                    setStatus(printerNum, 'Streaming', 'success');
+                                    updateConnectionStatus(printerNum, 'Streaming', true);
+                                    loadingIndicator.style.display = 'none';
+                                    wasStreaming = true;
+                                }
+                                resolve();
+                            };
+                            tempImg.onerror = () => {
+                                clearTimeout(timeout);
+                                if (wasStreaming) {
+                                    setStatus(printerNum, 'Sin senal', 'error');
+                                    updateConnectionStatus(printerNum, 'No Signal', false);
+                                    wasStreaming = false;
+                                }
+                                loadingIndicator.style.display = 'none';
+                                resolve();
+                            };
+                            tempImg.src = printer.streamUrl + '?_=' + Date.now();
+                        });
+                    } catch(e) {
+                        if (wasStreaming) {
+                            setStatus(printerNum, 'Timeout', 'warning');
+                            wasStreaming = false;
+                        }
+                    }
+
+                    const elapsed = performance.now() - t0;
+                    const wait = Math.max(0, 100 - elapsed);
+                    if (wait > 0) await new Promise(r => setTimeout(r, wait));
+                }
+            }
+            refreshLoop();
+        }
+
+        function initializePlayer(printerNum) {
+            addLog(printerNum, `Initializing Printer ${printerNum}…`, 'info');
+            const printer = printers[printerNum];
+            if (printer && printer.isSnapmaker) {
+                startSnapmakerStream(printerNum);
+            } else {
+                createPlayer(printerNum);
+            }
+        }
+
+        function reconnectPrinter(printerNum) {
+            addLog(printerNum, 'Manual reconnection', 'warn');
+            const printer = printers[printerNum];
+            if (printer && printer.isSnapmaker) {
+                startSnapmakerStream(printerNum);
+            } else {
+                createPlayer(printerNum);
+            }
+        }
+
+        // ========================================
+        // ZOOM
+        // ========================================
+        const zoomState = {};
+        const ZOOM_STEP = 0.5;
+        const ZOOM_MIN  = 1;
+        const ZOOM_MAX  = 8;
+
+        function initZoom(printerNum) {
+            const wrapper = document.getElementById(`videoWrapper${printerNum}`);
+            const video   = document.getElementById(`videoElement${printerNum}`);
+            if (!wrapper || !video) return;
+
+            zoomState[printerNum] = {
+                scale: 1, originX: 50, originY: 50,
+                dragStartX: 0, dragStartY: 0, isDragging: false,
+                pinchStartDist: 0, pinchStartScale: 1
+            };
+
+            // ── Mouse wheel ──────────────────────────
+            wrapper.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const z = zoomState[printerNum];
+                const rect = wrapper.getBoundingClientRect();
+                const mouseX = ((e.clientX - rect.left) / rect.width)  * 100;
+                const mouseY = ((e.clientY - rect.top)  / rect.height) * 100;
+                const delta = e.deltaY < 0 ? 0.15 : -0.15;
+                const newScale = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z.scale + delta * z.scale));
+                _applyNewScale(printerNum, newScale, mouseX, mouseY);
+            }, { passive: false });
+
+            // ── Mouse drag (pan) ─────────────────────
+            wrapper.addEventListener('mousedown', (e) => {
+                const z = zoomState[printerNum];
+                if (z.scale <= 1 || e.button !== 0) return;
+                e.preventDefault();
+                z.isDragging = true;
+                z.dragStartX = e.clientX;
+                z.dragStartY = e.clientY;
+                wrapper.classList.add('dragging');
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                const z = zoomState[printerNum];
+                if (!z || !z.isDragging) return;
+                const rect = wrapper.getBoundingClientRect();
+                const dx = (e.clientX - z.dragStartX) / rect.width  * 100 / z.scale;
+                const dy = (e.clientY - z.dragStartY) / rect.height * 100 / z.scale;
+                z.originX = Math.max(0, Math.min(100, z.originX - dx));
+                z.originY = Math.max(0, Math.min(100, z.originY - dy));
+                z.dragStartX = e.clientX;
+                z.dragStartY = e.clientY;
+                applyZoom(printerNum);
+            });
+
+            window.addEventListener('mouseup', () => {
+                const z = zoomState[printerNum];
+                if (!z) return;
+                z.isDragging = false;
+                wrapper.classList.remove('dragging');
+            });
+
+            // ── Touch: pinch-to-zoom + pan ───────────
+            wrapper.addEventListener('touchstart', (e) => {
+                const z = zoomState[printerNum];
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    z.pinchStartDist  = _pinchDist(e.touches);
+                    z.pinchStartScale = z.scale;
+                } else if (e.touches.length === 1 && z.scale > 1) {
+                    z.isDragging  = true;
+                    z.dragStartX  = e.touches[0].clientX;
+                    z.dragStartY  = e.touches[0].clientY;
+                }
+            }, { passive: false });
+
+            wrapper.addEventListener('touchmove', (e) => {
+                const z = zoomState[printerNum];
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    const dist     = _pinchDist(e.touches);
+                    const newScale = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z.pinchStartScale * (dist / z.pinchStartDist)));
+                    const rect     = wrapper.getBoundingClientRect();
+                    const cx = ((e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left) / rect.width  * 100;
+                    const cy = ((e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top)  / rect.height * 100;
+                    _applyNewScale(printerNum, newScale, cx, cy);
+                } else if (e.touches.length === 1 && z.isDragging) {
+                    e.preventDefault();
+                    const rect = wrapper.getBoundingClientRect();
+                    const dx = (e.touches[0].clientX - z.dragStartX) / rect.width  * 100 / z.scale;
+                    const dy = (e.touches[0].clientY - z.dragStartY) / rect.height * 100 / z.scale;
+                    z.originX = Math.max(0, Math.min(100, z.originX - dx));
+                    z.originY = Math.max(0, Math.min(100, z.originY - dy));
+                    z.dragStartX = e.touches[0].clientX;
+                    z.dragStartY = e.touches[0].clientY;
+                    applyZoom(printerNum);
+                }
+            }, { passive: false });
+
+            wrapper.addEventListener('touchend', () => {
+                const z = zoomState[printerNum];
+                if (z) z.isDragging = false;
+            });
+
+            // ── Double-click / double-tap → reset ────
+            wrapper.addEventListener('dblclick', () => resetZoom(printerNum));
+        }
+
+        function _pinchDist(touches) {
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
+            return Math.hypot(dx, dy);
+        }
+
+        function _applyNewScale(printerNum, newScale, anchorX, anchorY) {
+            const z = zoomState[printerNum];
+            if (newScale === ZOOM_MIN) {
+                z.originX = 50; z.originY = 50;
+            } else if (z.scale === ZOOM_MIN) {
+                z.originX = anchorX;
+                z.originY = anchorY;
+            } else {
+                z.originX += (anchorX - z.originX) * (1 - z.scale / newScale);
+                z.originY += (anchorY - z.originY) * (1 - z.scale / newScale);
+            }
+            z.scale = newScale;
+            applyZoom(printerNum);
+        }
+
+        // Step zoom from buttons (±)
+        function stepZoom(printerNum, direction) {
+            const z = zoomState[printerNum];
+            if (!z) return;
+            const newScale = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z.scale + direction * ZOOM_STEP));
+            _applyNewScale(printerNum, newScale, 50, 50);
+        }
+
+        function applyZoom(printerNum) {
+            const z         = zoomState[printerNum];
+            if (!z) return;
+            const video     = document.getElementById(`videoElement${printerNum}`);
+            const snapImg   = document.getElementById(`snapImg${printerNum}`);
+            const wrapper   = document.getElementById(`videoWrapper${printerNum}`);
+            const indicator = document.getElementById(`zoomIndicator${printerNum}`);
+            const resetBtn  = document.getElementById(`zoomResetBtn${printerNum}`);
+
+            // Apply zoom to whichever element is visible (video or snapmaker img)
+            const targets = [video, snapImg].filter(el => el && el.style.display !== 'none');
+            if (targets.length === 0) return;
+
+            targets.forEach(el => {
+                el.style.transformOrigin = `${z.originX}% ${z.originY}%`;
+                el.style.transform = z.scale > 1 ? `scale(${z.scale})` : '';
+            });
+            wrapper.classList.toggle('zoomed', z.scale > 1);
+
+            if (indicator) {
+                indicator.textContent = `${z.scale.toFixed(1)}×`;
+                indicator.classList.toggle('visible', z.scale > 1);
+            }
+            if (resetBtn) resetBtn.classList.toggle('visible', z.scale > 1);
+        }
+
+        function resetZoom(printerNum) {
+            const z = zoomState[printerNum];
+            if (!z) return;
+            z.scale = ZOOM_MIN; z.originX = 50; z.originY = 50;
+            applyZoom(printerNum);
+        }
+
+        // ========================================
+        // FULLSCREEN
+        // ========================================
+        function toggleFullscreen(printerNum) {
+            const videoWrapper = document.getElementById(`videoWrapper${printerNum}`);
+            if (!document.fullscreenElement) {
+                if (videoWrapper.requestFullscreen) videoWrapper.requestFullscreen();
+                else if (videoWrapper.webkitRequestFullscreen) videoWrapper.webkitRequestFullscreen();
+                showToast(`Printer ${printerNum} fullscreen`);
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+            }
+        }
+
+        // ========================================
+        // RECORDING & TIMELAPSE
+        // ========================================
+        function toggleRecording(printerNum) {
+            const printer = printers[printerNum];
+            if (!printer) return;
+
+            const video = document.getElementById(`videoElement${printerNum}`);
+            const btn = document.getElementById(`btnRecord${printerNum}`);
+
+            if (printer.isRecording) {
+                printer.mediaRecorder.stop();
+                printer.isRecording = false;
+                btn.innerHTML = '🔴 Rec';
+                showToast(`P${printerNum}: Recording saved`);
+            } else {
+                const stream = video.captureStream();
+                printer.mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
+                printer.recordedChunks = [];
+                printer.mediaRecorder.ondataavailable = e => printer.recordedChunks.push(e.data);
+                printer.mediaRecorder.onstop = () => {
+                    const blob = new Blob(printer.recordedChunks, { type: 'video/webm' });
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = `P${printerNum}_recording_${Date.now()}.mp4`;
+                    a.click();
+                };
+                printer.mediaRecorder.start();
+                printer.isRecording = true;
+                btn.innerHTML = '⬛ Stop';
+                showToast(`P${printerNum}: Recording…`);
+            }
+        }
+
+        function toggleTimelapse(printerNum) {
+            const printer = printers[printerNum];
+            if (!printer) return;
+
+            const video = document.getElementById(`videoElement${printerNum}`);
+            const btn = document.getElementById(`btnTimelapse${printerNum}`);
+
+            if (printer.isTimelapse) {
+                clearInterval(printer.timelapseInterval);
+                printer.isTimelapse = false;
+                btn.innerHTML = '⏱ TL';
+                compileTimelapse(printerNum);
+            } else {
+                printer.timelapseFrames = [];
+                const sec = document.getElementById(`timelapseInterval${printerNum}`).value;
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                printer.timelapseInterval = setInterval(() => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    ctx.drawImage(video, 0, 0);
+                    canvas.toBlob(b => printer.timelapseFrames.push(b), 'image/jpeg', 0.8);
+                }, sec * 1000);
+
+                printer.isTimelapse = true;
+                btn.innerHTML = '⬛ Stop';
+                showToast(`P${printerNum}: Timelapse (${sec}s/f)`);
+            }
+        }
+
+        async function compileTimelapse(printerNum) {
+            const printer = printers[printerNum];
+            if (!printer) return;
+
+            const video = document.getElementById(`videoElement${printerNum}`);
+            if (printer.timelapseFrames.length < 2) { showToast(`P${printerNum}: Not enough frames`); return; }
+
+            showToast(`P${printerNum}: Compiling…`);
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth || 1920;
+            canvas.height = video.videoHeight || 1080;
+            const ctx = canvas.getContext('2d');
+            const stream = canvas.captureStream(30);
+            const rec = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
+            const chunks = [];
+            rec.ondataavailable = e => chunks.push(e.data);
+            rec.onstop = () => {
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(new Blob(chunks, { type: 'video/webm' }));
+                a.download = `P${printerNum}_timelapse_${Date.now()}.mp4`;
+                a.click();
+                showToast(`P${printerNum}: Timelapse saved`);
+            };
+            rec.start();
+            for (let blob of printer.timelapseFrames) {
+                const img = await createImageBitmap(blob);
+                ctx.drawImage(img, 0, 0);
+                await new Promise(r => setTimeout(r, 33));
+            }
+            rec.stop();
+        }
+
+        function takeSnapshot(printerNum) {
+            const video = document.getElementById(`videoElement${printerNum}`);
+            if (!video) return;
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth || 1920;
+            canvas.height = video.videoHeight || 1080;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            const a = document.createElement('a');
+            a.href = canvas.toDataURL('image/jpeg');
+            a.download = `P${printerNum}_snapshot_${Date.now()}.jpg`;
+            a.click();
+            showToast(`P${printerNum}: Snapshot saved`);
+        }
+
+        // ========================================
+        // LATENCY MONITORING
+        // ========================================
+        setInterval(() => {
+            Object.keys(printers).forEach(printerNum => {
+                const printer = printers[printerNum];
+                if (!printer) return;
+                const video = document.getElementById(`videoElement${printerNum}`);
+                const latencyStatus = document.getElementById(`latencyStatus${printerNum}`);
+                if (!video || !latencyStatus) return;
+
+                if (printer.flvPlayer && video.buffered.length > 0 && !video.paused) {
+                    const latency = video.buffered.end(0) - video.currentTime;
+                    const latencyText = `${latency.toFixed(2)}s`;
+                    latencyStatus.textContent = latencyText;
+
+                    if (latency > 3) {
+                        latencyStatus.className = 'status-value error';
+                        if (printer.lastLatency !== latencyText) {
+                            try {
+                                if (video.seekable.length > 0) video.currentTime = video.seekable.end(0) - 0.5;
+                            } catch (e) {}
+                            printer.lastLatency = latencyText;
+                        }
+                    } else if (latency > 1.5) {
+                        latencyStatus.className = 'status-value warning';
+                    } else {
+                        latencyStatus.className = 'status-value success';
+                    }
+                } else {
+                    latencyStatus.textContent = '—';
+                    latencyStatus.className = 'status-value';
+                }
+            });
+        }, 1000);
+
+        // ========================================
+        // FILAMENT TRACKER
+        // ========================================
+        let filaments = JSON.parse(localStorage.getItem('filaments')) || [];
+        let editingFilamentId = null;
+
+        document.getElementById('filamentType').addEventListener('change', function(e) {
+            const ci = document.getElementById('customType');
+            ci.style.display = e.target.value === 'custom' ? 'block' : 'none';
+            ci.required = e.target.value === 'custom';
+        });
+
+        document.getElementById('filamentBrand').addEventListener('change', function(e) {
+            const ci = document.getElementById('customBrand');
+            ci.style.display = e.target.value === 'custom' ? 'block' : 'none';
+            ci.required = e.target.value === 'custom';
+        });
+
+        document.getElementById('filamentColor').addEventListener('change', function(e) {
+            const ci = document.getElementById('customColorName');
+            ci.style.display = e.target.value === 'custom' ? 'block' : 'none';
+            ci.required = e.target.value === 'custom';
+            if (e.target.value !== 'custom') document.getElementById('colorPicker').value = e.target.value;
+        });
+
+        document.getElementById('colorPicker').addEventListener('change', function() {
+            document.getElementById('filamentColor').value = 'custom';
+            document.getElementById('customColorName').style.display = 'block';
+            document.getElementById('customColorName').required = true;
+        });
+
+        function openFilamentModal(id = null) {
+            editingFilamentId = id;
+            const modal = document.getElementById('filamentModal');
+            const title = document.getElementById('filamentModalTitle');
+            const submitBtn = document.getElementById('submitFilamentBtn');
+
+            document.querySelector('#filamentModal form').reset();
+            document.getElementById('customType').style.display = 'none';
+            document.getElementById('customBrand').style.display = 'none';
+            document.getElementById('customColorName').style.display = 'none';
+
+            if (id) {
+                const f = filaments.find(fil => fil.id === id);
+                title.textContent = 'Edit Filament';
+                submitBtn.textContent = 'Update';
+                document.getElementById('filamentType').value = f.type;
+                document.getElementById('filamentBrand').value = f.brand;
+                document.getElementById('filamentWeight').value = f.weight;
+                document.getElementById('colorPicker').value = f.color;
+            } else {
+                title.textContent = 'New Filament';
+                submitBtn.textContent = 'Add';
+            }
+            modal.style.display = 'flex';
+        }
+
+        function closeFilamentModal() {
+            document.getElementById('filamentModal').style.display = 'none';
+            editingFilamentId = null;
+        }
+
+        function saveFilament(event) {
+            event.preventDefault();
+            const typeSelect = document.getElementById('filamentType');
+            const type = typeSelect.value === 'custom' ? document.getElementById('customType').value : typeSelect.value;
+            const brandSelect = document.getElementById('filamentBrand');
+            const brand = brandSelect.value === 'custom' ? document.getElementById('customBrand').value : brandSelect.value;
+            const colorSelect = document.getElementById('filamentColor');
+            let colorValue, colorName;
+
+            if (colorSelect.value === 'custom') {
+                colorValue = document.getElementById('colorPicker').value;
+                colorName = document.getElementById('customColorName').value;
+            } else {
+                colorValue = colorSelect.value;
+                colorName = colorSelect.options[colorSelect.selectedIndex].text;
+            }
+
+            const weight = parseInt(document.getElementById('filamentWeight').value);
+
+            if (editingFilamentId) {
+                const f = filaments.find(fil => fil.id === editingFilamentId);
+                Object.assign(f, { type, brand, color: colorValue, colorName, weight });
+            } else {
+                filaments.push({ id: Date.now(), type, brand, color: colorValue, colorName, weight });
+            }
+
+            localStorage.setItem('filaments', JSON.stringify(filaments));
+            renderFilaments();
+            closeFilamentModal();
+            showToast(editingFilamentId ? 'Filament updated' : 'Filament added');
+        }
+
+        function deleteFilament(id) {
+            if (confirm('Delete this filament?')) {
+                filaments = filaments.filter(f => f.id !== id);
+                localStorage.setItem('filaments', JSON.stringify(filaments));
+                renderFilaments();
+                showToast('Filament deleted');
+            }
+        }
+
+        function createSpoolSVG(color, weight) {
+            const radius = 54, strokeWidth = 16;
+            const circumference = 2 * Math.PI * radius;
+            const percentage = weight / 1000;
+            const filledLength = circumference * percentage;
+            const gradId = `grad-${Date.now()}-${Math.random()}`;
+
+            return `
+                <svg viewBox="0 0 140 140" style="width:100%; height:100%;">
+                    <defs>
+                        <radialGradient id="${gradId}" cx="40%" cy="40%">
+                            <stop offset="0%" style="stop-color:${color}" />
+                            <stop offset="100%" style="stop-color:${color};stop-opacity:0.7" />
+                        </radialGradient>
+                    </defs>
+                    <circle cx="70" cy="70" r="${radius}" fill="none" stroke="rgba(100,100,110,0.15)" stroke-width="${strokeWidth}"/>
+                    <circle cx="70" cy="70" r="${radius}" fill="none" stroke="url(#${gradId})" stroke-width="${strokeWidth}"
+                            stroke-dasharray="${filledLength} ${circumference - filledLength}"
+                            stroke-linecap="round" transform="rotate(-90 70 70)"/>
+                    <circle cx="70" cy="70" r="32" fill="rgba(80,70,55,0.9)"/>
+                    <circle cx="70" cy="70" r="10" fill="rgba(255,255,255,0.06)"/>
+                </svg>
+            `;
+        }
+
+        function renderFilaments() {
+            const container = document.getElementById('filamentsContainer');
+            if (filaments.length === 0) {
+                container.innerHTML = `<div style="text-align:center; padding:2rem; color:var(--text-muted); grid-column:1/-1;"><div style="font-size:2rem;opacity:0.4">🧵</div><p style="font-size:0.8rem;margin-top:0.5rem">No filaments registered</p></div>`;
+                return;
+            }
+
+            container.innerHTML = filaments.map(f => `
+                <div onclick="openFilamentModal(${f.id})"
+                     style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:var(--radius-lg); padding:0.875rem; display:flex; flex-direction:column; align-items:center; gap:0.5rem; cursor:pointer; transition:all 0.2s ease;"
+                     onmouseover="this.style.borderColor='rgba(255,255,255,0.15)'; this.style.background='rgba(255,255,255,0.06)'"
+                     onmouseout="this.style.borderColor='var(--border)'; this.style.background='rgba(255,255,255,0.03)'">
+                    <div style="width:80px; height:80px; position:relative;">
+                        ${createSpoolSVG(f.color, f.weight)}
+                        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; pointer-events:none;">
+                            <div style="font-size:0.6rem; font-weight:800; color:white; text-shadow:0 1px 3px rgba(0,0,0,0.8);">${f.type}</div>
+                            <div style="font-size:0.52rem; color:rgba(255,255,255,0.7);">${f.weight >= 1000 ? '1kg' : f.weight + 'g'}</div>
+                        </div>
+                    </div>
+                    <div style="text-align:center; width:100%;">
+                        <div style="font-size:0.72rem; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${f.brand}</div>
+                        <div style="font-size:0.62rem; color:var(--text-muted);">${f.colorName}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ========================================
+        // EVENT LISTENERS
+        // ========================================
+        document.getElementById('saveConfigBtn').onclick = () => {
+            const name = document.getElementById('printerNameInput').value.trim();
+            const protocol = document.getElementById('protocolSelect').value;
+            const ip = document.getElementById('ipInput').value.trim();
+            const portSelect = document.getElementById('portSelect').value;
+            const portInput = document.getElementById('portInput').value.trim();
+            const port = portSelect === 'custom' ? portInput : portSelect;
+
+            if (!ip) { alert('Please enter the IP address'); return; }
+            saveConfig(currentConfigPrinter, name || `Printer ${currentConfigPrinter}`, protocol, ip, port);
+        };
+
+        document.getElementById('configModal').addEventListener('click', (e) => {
+            if (e.target.id === 'configModal') closeConfigModal();
+        });
+
+        document.getElementById('filamentModal').addEventListener('click', (e) => {
+            if (e.target.id === 'filamentModal') closeFilamentModal();
+        });
+
+        // ========================================
+        // LAYOUT TOGGLE
+        // ========================================
+        // ========================================
+        // INSTRUCTIONS TOGGLE
+        // ========================================
+        function toggleInstructions() {
+            const body = document.getElementById('instructionsBody');
+            const arrow = document.getElementById('instructionsArrow');
+            const isOpen = body.style.display !== 'none';
+            body.style.display = isOpen ? 'none' : 'block';
+            arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(90deg)';
+        }
+
+        function switchSetupTab(tab) {
+            document.getElementById('setupAnycubic').style.display = tab === 'anycubic' ? 'block' : 'none';
+            document.getElementById('setupSnapmaker').style.display = tab === 'snapmaker' ? 'block' : 'none';
+            document.getElementById('tabAnycubic').classList.toggle('active', tab === 'anycubic');
+            document.getElementById('tabSnapmaker').classList.toggle('active', tab === 'snapmaker');
+        }
+
+        let currentLayout = localStorage.getItem('printerLayout') || 'horizontal';
+
+        function toggleLayout() {
+            const grid = document.getElementById('printersGrid');
+            const btn = document.getElementById('layoutToggleBtn');
+            const icon = document.getElementById('layoutIcon');
+
+            if (currentLayout === 'horizontal') {
+                currentLayout = 'vertical';
+                grid.classList.remove('layout-horizontal');
+                grid.classList.add('layout-vertical');
+                btn.classList.add('vertical');
+                icon.textContent = '▥';
+            } else {
+                currentLayout = 'horizontal';
+                grid.classList.remove('layout-vertical');
+                grid.classList.add('layout-horizontal');
+                btn.classList.remove('vertical');
+                icon.textContent = '▤';
+            }
+
+            localStorage.setItem('printerLayout', currentLayout);
+            showToast(`Layout: ${currentLayout === 'horizontal' ? 'Side by side' : 'Stacked'}`);
+        }
+
+        function applyLayout() {
+            const grid = document.getElementById('printersGrid');
+            const icon = document.getElementById('layoutIcon');
+            if (currentLayout === 'vertical') {
+                grid.classList.add('layout-vertical');
+                document.getElementById('layoutToggleBtn').classList.add('vertical');
+                icon.textContent = '▥';
+            } else {
+                grid.classList.add('layout-horizontal');
+                icon.textContent = '▤';
+            }
+        }
+
+        // ========================================
+        // THEME
+        // ========================================
+        function toggleThemeMenu() {
+            const menu = document.getElementById('themeMenu');
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // Close menu on outside click
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('themeMenu');
+            const btn = document.getElementById('themeToggleBtn');
+            if (menu && !menu.contains(e.target) && !btn.contains(e.target)) {
+                menu.style.display = 'none';
+            }
+        });
+
+        const THEME_NAMES = {
+            default: 'Modern Dark',
+            cyberpunk: 'Cyberpunk',
+            midnight: 'Midnight Purple',
+            forest: 'Forest',
+            custom: 'Custom Image'
+        };
+        const ALL_THEMES = ['theme-cyberpunk', 'theme-midnight', 'theme-forest', 'theme-custom'];
+
+        function setTheme(theme) {
+            // If custom, prompt for image first
+            if (theme === 'custom') {
+                const existingBg = localStorage.getItem('customBgImage');
+                if (!existingBg) {
+                    document.getElementById('customBgInput').click();
+                    return;
+                }
+                document.body.style.setProperty('--custom-bg-image', `url(${existingBg})`);
+            }
+
+            ALL_THEMES.forEach(t => document.body.classList.remove(t));
+            if (theme !== 'default') {
+                document.body.classList.add('theme-' + theme);
+            }
+            localStorage.setItem('dashboardTheme', theme);
+            document.getElementById('themeMenu').style.display = 'none';
+            highlightActiveTheme(theme);
+            showToast(`Theme: ${THEME_NAMES[theme] || theme}`);
+        }
+
+        function highlightActiveTheme(theme) {
+            document.querySelectorAll('#themeMenu .theme-option').forEach(btn => {
+                const t = btn.getAttribute('data-theme');
+                btn.style.borderColor = (t === theme) ? 'var(--orange)' : 'var(--border)';
+            });
+        }
+
+        function handleCustomBgUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const dataUrl = e.target.result;
+                localStorage.setItem('customBgImage', dataUrl);
+                document.body.style.setProperty('--custom-bg-image', `url(${dataUrl})`);
+                ALL_THEMES.forEach(t => document.body.classList.remove(t));
+                document.body.classList.add('theme-custom');
+                localStorage.setItem('dashboardTheme', 'custom');
+                document.getElementById('themeMenu').style.display = 'none';
+                highlightActiveTheme('custom');
+                showToast('Theme: Custom Image');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function loadTheme() {
+            const saved = localStorage.getItem('dashboardTheme') || 'default';
+            if (saved !== 'default') {
+                document.body.classList.add('theme-' + saved);
+            }
+            if (saved === 'custom') {
+                const bg = localStorage.getItem('customBgImage');
+                if (bg) {
+                    document.body.style.setProperty('--custom-bg-image', `url(${bg})`);
+                }
+            }
+            highlightActiveTheme(saved);
+        }
+
+        // ========================================
+        // INITIALIZATION
+        // ========================================
+        function init() {
+            loadTheme();
+            applyLayout();
+            loadPrinterList();
+            renderFilaments();
+        }
+
+        window.addEventListener('beforeunload', () => {
+            Object.keys(printers).forEach(printerNum => destroyPlayer(printerNum));
+        });
+
+        init();
+    </script>
+</body>
+<footer style="text-align:center; font-size:0.65rem; color:var(--text-muted); padding:1.5rem 0; border-top:1px solid var(--border); margin-top:0.5rem;">
+    <a href="https://github.com/T30dev/Anycubic-remote-cam-lan" target="_blank"
+       style="margin-right:0.5rem; text-decoration:none; color:var(--text-muted); opacity:0.7; transition:opacity 0.2s;"
+       onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
+        <svg viewBox="0 0 496 512" width="14" height="14" fill="currentColor" style="vertical-align:middle;">
+            <path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8z"/>
+        </svg>
+    </a>
+    Developed by Teo &nbsp;·&nbsp; CAM Printer Dashboard
+</footer>
+</html>
