@@ -6,7 +6,7 @@ Modern web interface to view FLV camera streams from 3D printers over LAN, with 
 
 ## ✨ Features
 
-<img width="1424" height="928" alt="image" src="https://github.com/user-attachments/assets/76cbef77-e3ad-408b-9fde-86e1ad026180" />
+<img width="1893" height="646" alt="Captura de pantalla 2026-03-16 a las 21 47 45" src="https://github.com/user-attachments/assets/ffd4c85d-daeb-4fe5-902b-537ea057723b" />
 
 ### 🎥 Multi-Printer Dashboard (`Remote-cam-multi.html`)
 
